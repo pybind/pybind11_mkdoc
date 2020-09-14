@@ -8,8 +8,14 @@ author = "Wenzel Jakob"
 author-email = "wenzel.jakob@epfl.ch"
 home-page = "https://github.com/pybind/pybind11-mkdoc"
 classifiers = ["License :: OSI Approved :: MIT License"]
-requires = ["libclang"]
+requires = ["clang", "pybind11"]
 requires-python = ">=2.7, !=3.0, !=3.1, !=3.2, !=3.3, !=3.4"
 
 [tool.flit.scripts]
 pybind11-mkdoc = "pybind11_mkdoc:main"
+
+[tool.flit.metadata.requires-extra]
+test = [
+    "pytest"
+]
+

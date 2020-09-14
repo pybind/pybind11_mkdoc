@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: master
+    tags:
+    - 'v*'
+
+jobs:
+  # pre-commit:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #   - uses: actions/checkout@v2
+  #   - uses: actions/setup-python@v2
+  #   - uses: pre-commit/action@v2.0.0
+
+  checks:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version:
+        - 3.5
+        - 3.8
+    name: Check Python ${{ matrix.python-version }}
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install package
+      run: python -m pip install .[test]
+
+    - name: Test package
+      run: python -m pytest
+
+
+
+
+  dist:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-python@v2
+
+    - name: Install requirements
+      run: python -m pip install build flit
+
+    - name: Build
+      run: python -m build .
+
+    - uses: actions/upload-artifact@v1
+      with:
+        name: DistPackage
+        path: dist
