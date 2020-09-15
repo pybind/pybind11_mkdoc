@@ -1,5 +1,5 @@
 import argparse
-from .mkdoc import mkdoc
+from .mkdoc_lib import mkdoc
 
 
 def main():
