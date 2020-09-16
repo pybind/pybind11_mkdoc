@@ -259,7 +259,7 @@ def read_args(args):
         # versions and distributions. LLVM switched to a monolithical setup
         # that includes everything under /usr/lib/llvm{version_number}/
         # We therefore glob for the library and select the highest version
-        library_file = sorted(glob("/usr/lib/llvm-*/lib/libclang.so"), reverse=True)[0]
+        library_file = sorted(glob("/usr/lib/llvm-*/lib/libclang.so.1"), reverse=True)[0]
         cindex.Config.set_library_file(library_file)
 
         # clang doesn't find its own base includes by default on Linux,
@@ -348,40 +348,20 @@ def write_header(comments, out_file=sys.stdout):
 ''', file=out_file)
 
 
-def mkdoc(args):
-    args = list(args)
-    out_path = None
-    for idx, arg in enumerate(args):
-        if arg.startswith("-o"):
-            args.remove(arg)
-            try:
-                out_path = arg[2:] or args.pop(idx)
-            except IndexError:
-                print("-o flag requires an argument")
-                exit(-1)
-            break
-
+def mkdoc(args, output=None):
     comments = extract_all(args)
 
-    if out_path:
+    if output:
         try:
-            with open(out_path, 'w') as out_file:
+            with open(output, 'w') as out_file:
                 write_header(comments, out_file)
         except:
             # In the event of an error, don't leave a partially-written
             # output file.
             try:
-                os.unlink(out_path)
+                os.unlink(output)
             except:
                 pass
             raise
     else:
         write_header(comments)
-
-
-if __name__ == '__main__':
-    try:
-        mkdoc(sys.argv[1:])
-    except NoFilenamesError:
-        print('Syntax: %s [.. a list of header files ..]' % sys.argv[0])
-        exit(-1)

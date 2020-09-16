@@ -1,0 +1,32 @@
+[build-system]
+requires = ["flit_core >=2,<4"]
+build-backend = "flit_core.buildapi"
+
+[tool.flit.metadata]
+module = "pybind11_mkdoc"
+author = "Wenzel Jakob"
+author-email = "wenzel.jakob@epfl.ch"
+home-page = "https://github.com/pybind/pybind11_mkdoc"
+classifiers = [
+  "License :: OSI Approved :: MIT License",
+  "Development Status :: 3 - Alpha",
+  "Programming Language :: Python :: 3.5",
+  "Programming Language :: Python :: 3.6",
+  "Programming Language :: Python :: 3.7",
+  "Programming Language :: Python :: 3.8",
+  "Topic :: Software Development :: Documentation",
+  "Operating System :: POSIX",
+  "Operating System :: MacOS"
+]
+requires = ["clang"]
+requires-python = ">=3.5"
+
+[tool.flit.scripts]
+pybind11-mkdoc = "pybind11_mkdoc:main"
+
+[tool.flit.metadata.requires-extra]
+test = [
+    "pytest",
+    "pybind11"
+]
+
