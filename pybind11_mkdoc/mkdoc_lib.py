@@ -61,6 +61,7 @@ CPP_OPERATORS = OrderedDict(
 
 job_count = cpu_count()
 job_semaphore = Semaphore(job_count)
+errors_detected = False
 
 
 class NoFilenamesError(ValueError):
@@ -223,12 +224,16 @@ class ExtractionThread(Thread):
         job_semaphore.acquire()
 
     def run(self):
+        global errors_detected
         print('Processing "%s" ..' % self.filename, file=sys.stderr)
         try:
             index = cindex.Index(
                 cindex.conf.lib.clang_createIndex(False, True))
             tu = index.parse(self.filename, self.parameters)
             extract(self.filename, tu.cursor, '', self.output)
+        except BaseException:
+            errors_detected = True
+            raise
         finally:
             job_semaphore.release()
 
@@ -350,6 +355,8 @@ def write_header(comments, out_file=sys.stdout):
 
 def mkdoc(args, output=None):
     comments = extract_all(args)
+    if errors_detected:
+        return
 
     if output:
         try:
