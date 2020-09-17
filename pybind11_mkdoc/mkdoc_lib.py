@@ -304,8 +304,8 @@ def extract_all(args):
 
 def write_header(comments, out_file=sys.stdout):
     print('''/*
-  This file contains docstrings for the Python bindings.
-  Do not edit! These were automatically extracted by mkdoc.py
+  This file contains docstrings for use in the Python bindings.
+  Do not edit! They were automatically extracted by pybind11_mkdoc.
  */
 
 #define __EXPAND(x)                                      x
