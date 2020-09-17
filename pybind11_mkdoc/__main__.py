@@ -34,6 +34,8 @@ in pybind11 binding code.
 
 Options:
 
+  -h                Display this help text
+
   -o <filename>     Write to the specified filename (default: use stdout)
 
   -I <path>         Specify an include directory
