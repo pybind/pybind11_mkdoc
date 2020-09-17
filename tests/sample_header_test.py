@@ -5,7 +5,6 @@ import sysconfig
 import sys
 
 import pytest
-import pybind11
 
 import pybind11_mkdoc
 
@@ -13,14 +12,7 @@ DIR = os.path.abspath(os.path.dirname(__file__))
 
 
 def test_generate_headers(capsys):
-    dirs = [sysconfig.get_path('include'),
-            sysconfig.get_path('platinclude'),
-            pybind11.get_include()]
-
-    # Make unique but preserve order
-    unique_dirs = list(collections.OrderedDict.fromkeys(dirs))
-    includes = ['-I' + d for d in unique_dirs]
-    comments = pybind11_mkdoc.mkdoc_lib.extract_all(includes + [os.path.join(DIR, "sample_header_docs", "sample_header.h")])
+    comments = pybind11_mkdoc.mkdoc_lib.extract_all([os.path.join(DIR, "sample_header_docs", "sample_header.h")])
     pybind11_mkdoc.mkdoc_lib.write_header(comments, sys.stdout)
 
     res = capsys.readouterr()
@@ -29,8 +21,8 @@ def test_generate_headers(capsys):
     assert "error" not in res.err
     assert res.out == """\
 /*
-  This file contains docstrings for the Python bindings.
-  Do not edit! These were automatically extracted by mkdoc.py
+  This file contains docstrings for use in the Python bindings.
+  Do not edit! They were automatically extracted by pybind11_mkdoc.
  */
 
 #define __EXPAND(x)                                      x
