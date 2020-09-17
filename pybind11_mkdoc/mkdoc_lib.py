@@ -271,16 +271,28 @@ def read_args(args):
         # clang doesn't find its own base includes by default on Linux,
         # but different distros install them in different paths.
         # Try to autodetect, preferring the highest numbered version.
-        def clang_folder_version(d):
+        def folder_version(d):
             return [int(ver) for ver in re.findall(r'(?<!lib)(?<!\d)\d+', d)]
-        clang_include_dir = max((
+
+        llvm_dir = max((
             path
             for libdir in ['lib64', 'lib', 'lib32']
-            for path in glob('/usr/%s/clang/*/include' % libdir)
+            for path in glob('/usr/%s/llvm-*' % libdir)
             if os.path.isdir(path)
-        ), default=None, key=clang_folder_version)
-        if clang_include_dir:
+        ), default=None, key=folder_version)
+
+
+        if llvm_dir:
+            parameters.extend(['-isystem', os.path.join(llvm_dir, 'include', 'c++', 'v1')])
+
+            clang_include_dir = max(
+                glob(os.path.join(llvm_dir, 'lib', 'clang', '*')
+            ), default=None, key=folder_version)
+
             parameters.extend(['-isystem', clang_include_dir])
+
+        parameters.extend(['-isystem', '/usr/include/%s-linux-gnu' % platform.machine(),
+                           '-isystem', '/usr/include'])
 
     for item in args:
         if item.startswith('-'):
