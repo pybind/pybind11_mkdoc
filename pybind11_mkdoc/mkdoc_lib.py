@@ -245,6 +245,7 @@ def read_args(args):
         parameters.extend(['-x', 'c++'])
     if not any(it.startswith("-std=") for it in args):
         parameters.append('-std=c++11')
+    parameters.append('-Wno-pragma-once-outside-header')
 
     if platform.system() == 'Darwin':
         dev_path = '/Applications/Xcode.app/Contents/Developer/'
