@@ -283,7 +283,8 @@ def read_args(args):
 
 
         if llvm_dir:
-            parameters.extend(['-isystem', os.path.join(llvm_dir, 'include', 'c++', 'v1')])
+            if '-stdlib=libc++' in args:
+                parameters.extend(['-isystem', os.path.join(llvm_dir, 'include', 'c++', 'v1')])
 
             clang_include_dir = max(
                 glob(os.path.join(llvm_dir, 'lib', 'clang', '*')
