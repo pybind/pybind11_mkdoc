@@ -21,6 +21,8 @@ be written to ``stdout``, or to a filename provided via the ``-o`` parameter.
 python -m pybind11_mkdoc -o docstrings.h header_file_1.h header_file_2.h
 ```
 
+Optionally, the path to the `libclang.so` can be specified by setting the LIBCLANG_PATH environment variable.
+
 Suppose we provide an input file with the following contents:
 
 ```cpp
