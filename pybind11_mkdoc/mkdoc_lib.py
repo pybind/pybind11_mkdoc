@@ -124,17 +124,18 @@ def process_comment(comment):
                r'\n\n$Template parameter ``\2``:\n\n', s)
 
     for in_, out_ in {
+        'returns': 'Returns',
         'return': 'Returns',
-        'author': 'Author',
         'authors': 'Authors',
+        'author': 'Author',
         'copyright': 'Copyright',
         'date': 'Date',
         'remark': 'Remark',
         'sa': 'See also',
         'see': 'See also',
         'extends': 'Extends',
-        'throw': 'Throws',
-        'throws': 'Throws'
+        'throws': 'Throws',
+        'throw': 'Throws'
     }.items():
         s = re.sub(r'[\\@]%s\s*' % in_, r'\n\n$%s:\n\n' % out_, s)
 
