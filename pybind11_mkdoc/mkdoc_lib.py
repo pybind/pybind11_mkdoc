@@ -278,12 +278,17 @@ def read_args(args):
         def folder_version(d):
             return [int(ver) for ver in re.findall(r'(?<!lib)(?<!\d)\d+', d)]
 
-        llvm_dir = max((
-            path
-            for libdir in ['lib64', 'lib', 'lib32']
-            for path in glob('/usr/%s/llvm-*' % libdir)
-            if os.path.isdir(path)
-        ), default=None, key=folder_version)
+        # capability to specify path to LLVM dir manually
+        # useful when installing LLVM to non standard directories
+        if 'LLVM_DIR_PATH' in os.environ:
+            llvm_dir = os.environ['LLVM_DIR_PATH']
+        else: 
+            llvm_dir = max((
+                path
+                for libdir in ['lib64', 'lib', 'lib32']
+                for path in glob('/usr/%s/llvm-*' % libdir)
+                if os.path.isdir(path)
+            ), default=None, key=folder_version)
 
 
         if llvm_dir:
