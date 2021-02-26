@@ -62,6 +62,7 @@ CPP_OPERATORS = OrderedDict(
 job_count = cpu_count()
 job_semaphore = Semaphore(job_count)
 errors_detected = False
+docstring_width = int(70)
 
 
 class NoFilenamesError(ValueError):
@@ -165,7 +166,7 @@ def process_comment(comment):
     wrapper.expand_tabs = True
     wrapper.replace_whitespace = True
     wrapper.drop_whitespace = True
-    wrapper.width = 70
+    wrapper.width = docstring_width
     wrapper.initial_indent = wrapper.subsequent_indent = ''
 
     result = ''
@@ -376,7 +377,10 @@ def write_header(comments, out_file=sys.stdout):
 ''', file=out_file)
 
 
-def mkdoc(args, output=None):
+def mkdoc(args, width, output=None):
+    if width != None:
+        global docstring_width
+        docstring_width = int(width)
     comments = extract_all(args)
     if errors_detected:
         return
