@@ -147,6 +147,8 @@ def process_comment(comment):
 
     s = re.sub(r'[\\@]code\s?(.*?)\s?[\\@]endcode',
                r"```\n\1\n```\n", s, flags=re.DOTALL)
+    s = re.sub(r'[\\@]warning\s?(.*?)\s?\n\n',
+               r'$.. warning::\n\n\1\n\n', s, flags=re.DOTALL)
 
     # HTML/TeX tags
     s = re.sub(r'<tt>(.*?)</tt>', r'``\1``', s, flags=re.DOTALL)
