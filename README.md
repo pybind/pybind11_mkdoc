@@ -78,3 +78,21 @@ py::class_<MyClass>(m, "MyClass", DOC(MyClass))
 
 This tool supports Linux and macOS and requires Clang/LLVM to be installed. It
 has never been used on Windows and will likely require adaptations.
+
+
+## Testing
+
+Install package `pytest-xdist`:
+```
+python3 -m pip install pytest-xdist
+```
+
+Install the library:
+```
+python3 -m pip install .
+```
+
+And execute the tests (forked)
+```
+python3 -m pip pytest --forked
+```
