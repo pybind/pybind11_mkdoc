@@ -154,7 +154,7 @@ def process_comment(comment):
     s = re.sub(r'[\\@]deprecated\s(.*?)\s?(.*?)\s?\n\n',
                r'$.. deprecated:: \1\n\n\2\n\n', s, flags=re.DOTALL)
     s = re.sub(r'[\\@]since\s?(.*?)\s?\n\n',
-               r'$.. versionadded:: \1\n\n', s, flags=re.DOTALL)
+               r'.. versionadded:: \1\n\n', s, flags=re.DOTALL)
     s = re.sub(r'[\\@]todo\s?(.*?)\s?\n\n',
                r'$.. todo::\n\n\1\n\n', s, flags=re.DOTALL)
 
