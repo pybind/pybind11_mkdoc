@@ -33,11 +33,14 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
 
+    - name: Install dependencies
+      run: python -m pip install pytest-xdist
+
     - name: Install package
       run: python -m pip install .[test]
 
     - name: Test package
-      run: python -m pytest
+      run: python -m pytest --forked
 
 
 
