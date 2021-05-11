@@ -283,7 +283,7 @@ def read_args(args):
         # useful when installing LLVM to non standard directories
         if 'LLVM_DIR_PATH' in os.environ:
             llvm_dir = os.environ['LLVM_DIR_PATH']
-        else: 
+        else:
             llvm_dir = max((
                 path
                 for libdir in ['lib64', 'lib', 'lib32']
@@ -301,6 +301,21 @@ def read_args(args):
             ), default=None, key=folder_version)
 
             parameters.extend(['-isystem', clang_include_dir])
+
+        # Add additional C++ include directories
+        cpp_dirs = []
+
+        cpp_dirs.append(max(
+            glob('/usr/include/c++/*'
+        ), default=None, key=folder_version))
+
+        cpp_dirs.append(max(
+            glob('/usr/include/%s-linux-gnu/c++/*' % platform.machine()
+        ), default=None, key=folder_version))
+
+        for cpp_dir in cpp_dirs :
+            if cpp_dir is not None :
+                parameters.extend(['-isystem', cpp_dir])
 
         parameters.extend(['-isystem', '/usr/include/%s-linux-gnu' % platform.machine(),
                            '-isystem', '/usr/include'])
