@@ -147,13 +147,23 @@ def process_comment(comment):
 
     s = re.sub(r'[\\@]code\s?(.*?)\s?[\\@]endcode',
                r"```\n\1\n```\n", s, flags=re.DOTALL)
+    s = re.sub(r'[\\@]warning\s?(.*?)\s?\n\n',
+               r'$.. warning::\n\n\1\n\n', s, flags=re.DOTALL)
+    # Deprecated expects a version number for reST and not for Doxygen. Here the first word of the
+    # doxygen directives is assumed to correspond to the version number
+    s = re.sub(r'[\\@]deprecated\s(.*?)\s?(.*?)\s?\n\n',
+               r'$.. deprecated:: \1\n\n\2\n\n', s, flags=re.DOTALL)
+    s = re.sub(r'[\\@]since\s?(.*?)\s?\n\n',
+               r'.. versionadded:: \1\n\n', s, flags=re.DOTALL)
+    s = re.sub(r'[\\@]todo\s?(.*?)\s?\n\n',
+               r'$.. todo::\n\n\1\n\n', s, flags=re.DOTALL)
 
     # HTML/TeX tags
     s = re.sub(r'<tt>(.*?)</tt>', r'``\1``', s, flags=re.DOTALL)
     s = re.sub(r'<pre>(.*?)</pre>', r"```\n\1\n```\n", s, flags=re.DOTALL)
     s = re.sub(r'<em>(.*?)</em>', r'*\1*', s, flags=re.DOTALL)
     s = re.sub(r'<b>(.*?)</b>', r'**\1**', s, flags=re.DOTALL)
-    s = re.sub(r'[\\@]f\$(.*?)[\\@]f\$', r'$\1$', s, flags=re.DOTALL)
+    s = re.sub(r'[\\@]f\$(.*?)[\\@]f\$', r':math:`\1`', s, flags=re.DOTALL)
     s = re.sub(r'<li>', r'\n\n* ', s)
     s = re.sub(r'</?ul>', r'', s)
     s = re.sub(r'</li>', r'\n\n', s)
