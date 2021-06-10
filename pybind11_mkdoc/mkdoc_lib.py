@@ -306,14 +306,22 @@ def read_args(args):
             if '-stdlib=libc++' in args:
                 parameters.extend(['-isystem', os.path.join(llvm_dir, 'include', 'c++', 'v1')])
 
-            clang_include_dir = max(
-                glob(os.path.join(llvm_dir, 'lib', 'clang', '*')
-            ), default=None, key=folder_version)
+            if 'CLANG_INCLUDE_DIR' in os.environ:
+                clang_include_dir = os.environ['CLANG_INCLUDE_DIR']
+            else:
+                clang_include_dir = max(
+                    glob(os.path.join(llvm_dir, 'lib', 'clang', '*')
+                ), default=None, key=folder_version)
 
             parameters.extend(['-isystem', clang_include_dir])
 
         # Add additional C++ include directories
         cpp_dirs = []
+
+        # capability to specify more cpp include dirs manually
+        if 'CPP_INCLUDE_DIRS' in os.environ:
+            cpp_dirs.extend([cpp_dir for cpp_dir in os.environ['CPP_INCLUDE_DIRS'].split()
+                             if os.path.exists(cpp_dir)])
 
         cpp_dirs.append(max(
             glob('/usr/include/c++/*'
