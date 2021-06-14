@@ -280,8 +280,13 @@ def read_args(args):
         if 'LIBCLANG_PATH' in os.environ:
             cindex.Config.set_library_file(os.environ['LIBCLANG_PATH'])
         else:
-            library_file = sorted(glob("/usr/lib/llvm-*/lib/libclang.so.1"), reverse=True)[0]
-            cindex.Config.set_library_file(library_file)
+            library_file_dirs = glob("/usr/lib/llvm-*/lib/libclang.so.1")
+            if len(library_file_dirs) > 0:
+                library_file = sorted(library_file_dirs, reverse=True)[0]
+                cindex.Config.set_library_file(library_file)
+            else:
+                raise FileNotFoundError("Failed to find libclang.so shared object file! "
+                                        "Set the LIBCLANG_PATH environment variable to provide a path to it.")
 
         # clang doesn't find its own base includes by default on Linux,
         # but different distros install them in different paths.
