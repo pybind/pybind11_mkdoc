@@ -310,7 +310,8 @@ def read_args(args):
                 glob(os.path.join(llvm_dir, 'lib', 'clang', '*')
             ), default=None, key=folder_version)
 
-            parameters.extend(['-isystem', clang_include_dir])
+            if clang_include_dir is not None:
+                parameters.extend(['-isystem', clang_include_dir])
 
         # Add additional C++ include directories
         cpp_dirs = []
