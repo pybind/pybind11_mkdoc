@@ -8,20 +8,13 @@ on:
     - 'v*'
 
 jobs:
-  # pre-commit:
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #   - uses: actions/checkout@v2
-  #   - uses: actions/setup-python@v2
-  #   - uses: pre-commit/action@v2.0.0
-
   checks:
     strategy:
       fail-fast: false
       matrix:
         python-version:
-        - 3.5
-        - 3.8
+        - 3.6
+        - 3.9
         runs-on:
         - ubuntu-latest
         - macos-latest
@@ -33,16 +26,11 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
 
-    - name: Install dependencies
-      run: python -m pip install pytest-xdist
-
     - name: Install package
       run: python -m pip install .[test]
 
     - name: Test package
       run: python -m pytest --forked
-
-
 
 
   dist:
@@ -52,13 +40,10 @@ jobs:
     - uses: actions/checkout@v2
     - uses: actions/setup-python@v2
 
-    - name: Install requirements
-      run: python -m pip install build flit
-
     - name: Build
-      run: python -m build .
+      run: pipx run build
 
-    - uses: actions/upload-artifact@v1
+    - uses: actions/upload-artifact@v2
       with:
         name: DistPackage
         path: dist
