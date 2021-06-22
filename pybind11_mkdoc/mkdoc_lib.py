@@ -426,7 +426,7 @@ def mkdoc(args, width, output=None):
 
     if output:
         try:
-            os.makedirs(os.path.dirname(output), exist_ok=True)
+            os.makedirs(os.path.dirname(os.path.abspath(output)), exist_ok=True)
             with open(output, 'w') as out_file:
                 write_header(comments, out_file)
         except:
