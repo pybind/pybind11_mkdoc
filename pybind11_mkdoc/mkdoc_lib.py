@@ -6,6 +6,7 @@
 #  Extract documentation from C++ header files to use it in Python bindings
 #
 
+import ctypes
 import os
 import sys
 import platform
@@ -273,7 +274,10 @@ def read_args(args):
             parameters.append('-isysroot')
             parameters.append(sysroot_dir)
     elif platform.system() == 'Windows':
-        if 'LIBCLANG_PATH' in os.environ:
+        library_file = ctypes.util.find_library("libclang.dll")
+        if library_file is not None:
+            cindex.Config.set_library_file(library_file)
+        elif 'LIBCLANG_PATH' in os.environ:
             library_file = os.environ['LIBCLANG_PATH']
             if os.path.isfile(library_file):
                 cindex.Config.set_library_file(library_file)
