@@ -275,16 +275,17 @@ def read_args(args):
             parameters.append('-isysroot')
             parameters.append(sysroot_dir)
     elif platform.system() == 'Windows':
-        library_file = ctypes.util.find_library("libclang.dll")
-        if library_file is not None:
-            cindex.Config.set_library_file(library_file)
-        elif 'LIBCLANG_PATH' in os.environ:
+        if 'LIBCLANG_PATH' in os.environ:
             library_file = os.environ['LIBCLANG_PATH']
             if os.path.isfile(library_file):
                 cindex.Config.set_library_file(library_file)
             else:
                 raise FileNotFoundError("Failed to find libclang.dll! "
                                         "Set the LIBCLANG_PATH environment variable to provide a path to it.")
+        else:
+            library_file = ctypes.util.find_library('libclang.dll')
+            if library_file is not None:
+                cindex.Config.set_library_file(library_file)
     elif platform.system() == 'Linux':
         # cython.util.find_library does not find `libclang` for all clang
         # versions and distributions. LLVM switched to a monolithical setup
