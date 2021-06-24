@@ -76,8 +76,7 @@ py::class_<MyClass>(m, "MyClass", DOC(MyClass))
 
 ## Limitations
 
-This tool supports Linux and macOS and requires Clang/LLVM to be installed. It
-has never been used on Windows and will likely require adaptations.
+This tool supports Linux, macOS and Windows. It requires Clang/LLVM to be installed.
 
 
 ## Testing
