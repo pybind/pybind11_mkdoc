@@ -6,12 +6,13 @@
 #  Extract documentation from C++ header files to use it in Python bindings
 #
 
-import ctypes
 import os
 import sys
 import platform
 import re
 import textwrap
+
+import ctypes.util
 
 from clang import cindex
 from clang.cindex import CursorKind
