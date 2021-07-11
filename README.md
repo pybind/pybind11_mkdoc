@@ -76,8 +76,8 @@ py::class_<MyClass>(m, "MyClass", DOC(MyClass))
 
 ## Limitations
 
-This tool supports Linux and macOS and requires Clang/LLVM to be installed. It
-has never been used on Windows and will likely require adaptations.
+This tool supports Linux and macOS for Python versions 3.6 to 3.9. On Windows you at least need Python version 3.8.
+Also, it requires Clang/LLVM to be installed.
 
 
 ## Testing
@@ -94,5 +94,5 @@ python3 -m pip install .
 
 And execute the tests (forked)
 ```
-python3 -m pip pytest --forked
+python3 -m pytest --forked
 ```
