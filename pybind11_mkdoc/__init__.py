@@ -14,7 +14,7 @@ import sys
 from .mkdoc_lib import mkdoc
 
 
-__version__ = "2.6.1.dev1"
+__version__ = "2.6.2"
 
 
 def _append_include_dir(args: list, include_dir: str, verbose: bool = True):
