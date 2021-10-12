@@ -287,76 +287,72 @@ def read_args(args):
             if library_file is not None:
                 cindex.Config.set_library_file(library_file)
     elif platform.system() == 'Linux':
-        # cython.util.find_library does not find `libclang` for all clang
-        # versions and distributions. LLVM switched to a monolithical setup
-        # that includes everything under /usr/lib/llvm{version_number}/
-        # We therefore glob for the library and select the highest version
-        if 'LIBCLANG_PATH' in os.environ:
-            cindex.Config.set_library_file(os.environ['LIBCLANG_PATH'])
-        else:
-            library_file_dirs = glob("/usr/lib/llvm-*/lib/libclang.so.1")
-            if len(library_file_dirs) > 0:
-                library_file = sorted(library_file_dirs, reverse=True)[0]
-                cindex.Config.set_library_file(library_file)
-            else:
-                raise FileNotFoundError("Failed to find libclang.so shared object file! "
-                                        "Set the LIBCLANG_PATH environment variable to provide a path to it.")
-
-        # clang doesn't find its own base includes by default on Linux,
-        # but different distros install them in different paths.
-        # Try to autodetect, preferring the highest numbered version.
+        # LLVM switched to a monolithical setup that includes everything under
+        # /usr/lib/llvm{version_number}/. We glob for the library and select
+        # the highest version
         def folder_version(d):
             return [int(ver) for ver in re.findall(r'(?<!lib)(?<!\d)\d+', d)]
 
-        # capability to specify path to LLVM dir manually
-        # useful when installing LLVM to non standard directories
+        llvm_dir = max((
+            path
+            for libdir in ['lib64', 'lib', 'lib32']
+            for path in glob('/usr/%s/llvm-*' % libdir)
+            if os.path.exists(os.path.join(path, 'lib', 'libclang.so.1'))
+        ), default=None, key=folder_version)
+
+        # Ability to override LLVM/libclang paths
         if 'LLVM_DIR_PATH' in os.environ:
             llvm_dir = os.environ['LLVM_DIR_PATH']
+        elif llvm_dir is None:
+            raise FileNotFoundError(
+                "Failed to find a LLVM installation providing the file "
+                "/usr/lib{32,64}/llvm-{VER}/lib/libclang.so.1. Make sure that "
+                "you have installed the packages libclang1-{VER} and "
+                "libc++-{VER}-dev, where {VER} refers to the desired "
+                "Clang/LLVM version (e.g. 11). You may alternatively override "
+                "the automatic search by specifying the LIBLLVM_DIR_PATH "
+                "(for the LLVM base directory) and/or LIBCLANG_PATH (if "
+                "libclang is located at a nonstandard location) environment "
+                "variables.")
+
+        if 'LIBCLANG_PATH' in os.environ:
+            libclang_dir = os.environ['LIBCLANG_PATH']
         else:
-            llvm_dir = max((
-                path
-                for libdir in ['lib64', 'lib', 'lib32']
-                for path in glob('/usr/%s/llvm-*' % libdir)
-                if os.path.isdir(path)
-            ), default=None, key=folder_version)
+            libclang_dir = os.path.join(llvm_dir, 'lib', 'libclang.so.1')
 
+        cindex.Config.set_library_file(libclang_dir)
+        cpp_dirs = [ ]
 
-        if llvm_dir:
-            if '-stdlib=libc++' in args:
-                parameters.extend(['-isystem', os.path.join(llvm_dir, 'include', 'c++', 'v1')])
+        if '-stdlib=libc++' not in args:
+            cpp_dirs.append(max(
+                glob('/usr/include/c++/*'
+            ), default=None, key=folder_version))
 
-            if 'CLANG_INCLUDE_DIR' in os.environ:
-                clang_include_dir = os.environ['CLANG_INCLUDE_DIR']
-            else:
-                clang_include_dir = max(
-                    glob(os.path.join(llvm_dir, 'lib', 'clang', '*')
-                ), default=None, key=folder_version)
+            cpp_dirs.append(max(
+                glob('/usr/include/%s-linux-gnu/c++/*' % platform.machine()
+            ), default=None, key=folder_version))
+        else:
+            cpp_dirs.append(os.path.join(llvm_dir, 'include', 'c++', 'v1'))
 
-            if clang_include_dir is not None:
-                parameters.extend(['-isystem', clang_include_dir])
+        if 'CLANG_INCLUDE_DIR' in os.environ:
+            cpp_dirs.append(os.environ['CLANG_INCLUDE_DIR'])
+        else:
+            cpp_dirs.append(max(
+                glob(os.path.join(llvm_dir, 'lib', 'clang', '*', 'include')
+            ), default=None, key=folder_version))
 
-        # Add additional C++ include directories
-        cpp_dirs = []
+        cpp_dirs.append('/usr/include/%s-linux-gnu' % platform.machine())
+        cpp_dirs.append('/usr/include')
 
-        # capability to specify more cpp include dirs manually
+        # Capability to specify additional include directories manually
         if 'CPP_INCLUDE_DIRS' in os.environ:
             cpp_dirs.extend([cpp_dir for cpp_dir in os.environ['CPP_INCLUDE_DIRS'].split()
                              if os.path.exists(cpp_dir)])
 
-        cpp_dirs.append(max(
-            glob('/usr/include/c++/*'
-        ), default=None, key=folder_version))
-
-        cpp_dirs.append(max(
-            glob('/usr/include/%s-linux-gnu/c++/*' % platform.machine()
-        ), default=None, key=folder_version))
-
-        for cpp_dir in cpp_dirs :
-            if cpp_dir is not None :
-                parameters.extend(['-isystem', cpp_dir])
-
-        parameters.extend(['-isystem', '/usr/include/%s-linux-gnu' % platform.machine(),
-                           '-isystem', '/usr/include'])
+        for cpp_dir in cpp_dirs:
+            if cpp_dir is None:
+                continue
+            parameters.extend(['-isystem', cpp_dir])
 
     for item in args:
         if item.startswith('-'):
