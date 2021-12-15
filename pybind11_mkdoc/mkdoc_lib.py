@@ -92,13 +92,13 @@ def process_comment(comment):
     leading_spaces = float('inf')
     for s in comment.expandtabs(tabsize=4).splitlines():
         s = s.strip()
-        if s.startswith('/*'):
-            s = s[2:].lstrip('*')
-        elif s.endswith('*/'):
+        if s.endswith('*/'):
             s = s[:-2].rstrip('*')
-        elif s.startswith('///'):
-            s = s[3:]
-        if s.startswith('*'):
+        if s.startswith('/*'):
+            s = s[2:].lstrip('*!<')
+        elif s.startswith('//'):
+            s = s[2:].lstrip('/!<')
+        elif s.startswith('*'):
             s = s[1:]
         if len(s) > 0:
             leading_spaces = min(leading_spaces, len(s) - len(s.lstrip()))
