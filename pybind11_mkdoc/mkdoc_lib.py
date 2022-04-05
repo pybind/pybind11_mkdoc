@@ -115,7 +115,7 @@ def process_comment(comment):
     param_group = r'([\[\w:,\]]+)'
 
     s = result
-    s = re.sub(r'[\\@]c\s+%s' % cpp_group, r'``\1``', s)
+    s = re.sub(r'[\\@][cp]\s+%s' % cpp_group, r'``\1``', s)
     s = re.sub(r'[\\@]a\s+%s' % cpp_group, r'*\1*', s)
     s = re.sub(r'[\\@]e\s+%s' % cpp_group, r'*\1*', s)
     s = re.sub(r'[\\@]em\s+%s' % cpp_group, r'*\1*', s)
