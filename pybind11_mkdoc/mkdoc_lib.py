@@ -126,6 +126,9 @@ def process_comment(comment):
     s = re.sub(r'[\\@]tparam%s?\s+%s' % (param_group, cpp_group),
                r'\n\n$Template parameter ``\2``:\n\n', s)
 
+    # Remove class and struct tags
+    s = re.sub(r'[\\@](class|struct)\s+.*', '', s)
+
     for in_, out_ in {
         'returns': 'Returns',
         'return': 'Returns',
