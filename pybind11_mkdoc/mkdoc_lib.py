@@ -111,7 +111,7 @@ def process_comment(comment):
         result = result2
 
     # Doxygen tags
-    cpp_group = r'([\w:]+)'
+    cpp_group = r'([^\s]+)'
     param_group = r'([\[\w:,\]]+)'
 
     s = result
