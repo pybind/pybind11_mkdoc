@@ -26,8 +26,8 @@ pybind11-mkdoc = "pybind11_mkdoc:main"
 
 [tool.flit.metadata.requires-extra]
 test = [
-    "pytest",
+    "pytest==7.1.3",
     "pybind11",
-    "pytest-xdist",
+    "pytest-xdist==2.4.0",
 ]
 

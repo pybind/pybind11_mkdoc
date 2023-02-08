@@ -82,12 +82,12 @@ Also, it requires Clang/LLVM to be installed.
 
 ## Testing
 
-Install package `pytest-xdist`:
+Install the packages `pytest`, `pytest-xdist`, and `flit`:
 ```
-python3 -m pip install pytest-xdist
+python3 -m pip install pytest==7.1.3 pytest-xdist==2.4.0
 ```
 
-Install the library:
+Next, install this project:
 ```
 python3 -m pip install .
 ```
