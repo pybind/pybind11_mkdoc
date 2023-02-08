@@ -76,8 +76,8 @@ py::class_<MyClass>(m, "MyClass", DOC(MyClass))
 
 ## Limitations
 
-This tool supports Linux and macOS for Python versions 3.6 to 3.9. On Windows you at least need Python version 3.8.
-Also, it requires Clang/LLVM to be installed.
+This tool supports Linux and macOS for Python versions 3.8 to 3.11.  Also, it
+requires Clang/LLVM to be installed.
 
 
 ## Testing
