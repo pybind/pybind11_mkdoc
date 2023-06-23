@@ -313,7 +313,7 @@ def read_args(args):
                 "you have installed the packages libclang1-{VER} and "
                 "libc++-{VER}-dev, where {VER} refers to the desired "
                 "Clang/LLVM version (e.g. 11). You may alternatively override "
-                "the automatic search by specifying the LIBLLVM_DIR_PATH "
+                "the automatic search by specifying the LLVM_DIR_PATH "
                 "(for the LLVM base directory) and/or LIBCLANG_PATH (if "
                 "libclang is located at a nonstandard location) environment "
                 "variables.")
