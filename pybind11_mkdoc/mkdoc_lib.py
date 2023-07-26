@@ -140,6 +140,7 @@ def process_comment(comment):
         'sa': 'See also',
         'see': 'See also',
         'extends': 'Extends',
+        'exception': 'Throws',
         'throws': 'Throws',
         'throw': 'Throws'
     }.items():
