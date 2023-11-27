@@ -153,7 +153,9 @@ def process_comment(comment):
     s = re.sub(r'[\\@]code\s?(.*?)\s?[\\@]endcode',
                r"```\n\1\n```\n", s, flags=re.DOTALL)
     s = re.sub(r'[\\@]warning\s?(.*?)\s?\n\n',
-               r'$.. warning::\n\n\1\n\n', s, flags=re.DOTALL)
+               r'\n\n$.. warning::\n\n\1\n\n', s, flags=re.DOTALL)
+    s = re.sub(r'[\\@]note\s?(.*?)\s?\n\n',
+               r'\n\n$.. note::\n\n\1\n\n', s, flags=re.DOTALL)
     # Deprecated expects a version number for reST and not for Doxygen. Here the first word of the
     # doxygen directives is assumed to correspond to the version number
     s = re.sub(r'[\\@]deprecated\s(.*?)\s?(.*?)\s?\n\n',
