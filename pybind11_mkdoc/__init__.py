@@ -37,7 +37,7 @@ def _append_include_dir(args: list, include_dir: str, verbose: bool = True):
     if os.path.isdir(include_dir):
         args.append(f"-I{include_dir}")
     elif verbose:
-        print(f"Include directoy '{include_dir}' does not exist!")
+        print(f"Include directory {include_dir!r} does not exist!")
 
 
 def _append_definition(args: list, definition: str, verbose: bool = True):
@@ -61,7 +61,7 @@ def _append_definition(args: list, definition: str, verbose: bool = True):
     """
 
     try:
-        macro, value = definition.strip().split('=')
+        macro, _, value = definition.partition('=')
         macro = macro.strip()
         value = value.strip() if value else '1'
 
