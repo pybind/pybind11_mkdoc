@@ -40,3 +40,7 @@ pybind11-mkdoc = "pybind11_mkdoc:main"
 
 [tool.flit.sdist]
 include = ["tests/**/*.py", "tests/**/*.h", ".gitignore"]
+
+
+[tool.ruff.lint]
+ignore = ["S110", "BLE", "PLW2901", "PLW0603", "INP001"]

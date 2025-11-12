@@ -1,5 +1,4 @@
 import os
-import sys
 
 import pybind11_mkdoc
 
@@ -7,10 +6,8 @@ DIR = os.path.abspath(os.path.dirname(__file__))
 
 
 def test_generate_headers(capsys, tmp_path):
-    comments = pybind11_mkdoc.mkdoc_lib.extract_all(
-        [os.path.join(DIR, "sample_header_docs", "sample_header.h")]
-    )
-    assert ['mkd_doc_RootLevelSymbol', 'mkd_doc_drake_MidLevelSymbol'] == [c[0] for c in comments]
+    comments = pybind11_mkdoc.mkdoc_lib.extract_all([os.path.join(DIR, "sample_header_docs", "sample_header.h")])
+    assert ["mkd_doc_RootLevelSymbol", "mkd_doc_drake_MidLevelSymbol"] == [c[0] for c in comments]
 
     output = tmp_path / "docs.h"
     with output.open("w") as fd:
@@ -20,7 +17,9 @@ def test_generate_headers(capsys, tmp_path):
 
     assert "warning" not in res.err
     assert "error" not in res.err
-    assert output.read_text() == """\
+    assert (
+        output.read_text()
+        == """\
 /*
   This file contains docstrings for use in the Python bindings.
   Do not edit! They were automatically extracted by pybind11_mkdoc.
@@ -66,3 +65,4 @@ vivamus at augue eget arcu dictum varius.)doc";
 #endif
 
 """
+    )
