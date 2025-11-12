@@ -10,24 +10,26 @@ home-page = "https://github.com/pybind/pybind11_mkdoc"
 classifiers = [
   "License :: OSI Approved :: MIT License",
   "Development Status :: 3 - Alpha",
-  "Programming Language :: Python :: 3.6",
-  "Programming Language :: Python :: 3.7",
-  "Programming Language :: Python :: 3.8",
   "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
   "Topic :: Software Development :: Documentation",
   "Operating System :: POSIX",
   "Operating System :: MacOS"
 ]
-requires = ["clang<19"]
-requires-python = ">=3.6"
+requires = ["clang"]
+requires-python = ">=3.9"
 
 [tool.flit.scripts]
 pybind11-mkdoc = "pybind11_mkdoc:main"
 
 [tool.flit.metadata.requires-extra]
 test = [
-    "pytest==7.1.3",
+    "pytest",
     "pybind11",
-    "pytest-xdist==2.4.0"
+    "pytest-xdist"
 ]
 
