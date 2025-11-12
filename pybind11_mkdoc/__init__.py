@@ -4,20 +4,16 @@ This is a package for building pybind11 docstrings from C++ header comments.
 (Docs WIP).
 """
 
-
 import argparse
 import os
 import re
-import shlex
-import sys
 
-from .mkdoc_lib import mkdoc
-
+from pybind11_mkdoc.mkdoc_lib import mkdoc
 
 __version__ = "2.6.2.dev1"
 
 
-def _append_include_dir(args: list, include_dir: str, verbose: bool = True):
+def _append_include_dir(args: list, include_dir: str, *, verbose: bool = True):
     """
     Add an include directory to an argument list (if it exists).
 
@@ -37,10 +33,10 @@ def _append_include_dir(args: list, include_dir: str, verbose: bool = True):
     if os.path.isdir(include_dir):
         args.append(f"-I{include_dir}")
     elif verbose:
-        print(f"Include directory {include_dir!r} does not exist!")
+        pass
 
 
-def _append_definition(args: list, definition: str, verbose: bool = True):
+def _append_definition(args: list, definition: str):
     """
     Add a compiler definition to an argument list.
 
@@ -61,21 +57,20 @@ def _append_definition(args: list, definition: str, verbose: bool = True):
     """
 
     try:
-        macro, _, value = definition.partition('=')
+        macro, _, value = definition.partition("=")
         macro = macro.strip()
-        value = value.strip() if value else '1'
+        value = value.strip() if value else "1"
 
         args.append(f"-D{macro}={value}")
-    except ValueError as exc:
+    except ValueError:
         # most likely means there was no '=' given
         # check if argument is valid identifier
-        if re.search(r'^[A-Za-z_][A-Za-z0-9_]*', definition):
+        if re.search(r"^[A-Za-z_][A-Za-z0-9_]*", definition):
             args.append(f"-D{definition}")
         else:
-            print(f"Failed to parse definition: {definition}")
-    except:
-        print(f"Failed to parse definition: {definition}")
-
+            pass
+    except Exception:
+        pass
 
 
 def main():
@@ -86,26 +81,53 @@ def main():
     """
 
     parser = argparse.ArgumentParser(
-            prog='pybind11_mkdoc',
-            description="Processes a sequence of C/C++ headers and extracts comments for use in pybind11 binding code.",
-            epilog="(Other compiler flags that Clang understands can also be supplied)",
-            allow_abbrev=False)
+        prog="pybind11_mkdoc",
+        description="Processes a sequence of C/C++ headers and extracts comments for use in pybind11 binding code.",
+        epilog="(Other compiler flags that Clang understands can also be supplied)",
+        allow_abbrev=False,
+    )
 
     parser.add_argument("-v", "--version", action="version", version=f"%(prog)s {__version__}")
 
-    parser.add_argument("-o", "--output", action="store", type=str, dest="output", metavar="<file>",
-                        help="Write to the specified file (default: use stdout).")
+    parser.add_argument(
+        "-o",
+        "--output",
+        action="store",
+        type=str,
+        dest="output",
+        metavar="<file>",
+        help="Write to the specified file (default: use stdout).",
+    )
 
-    parser.add_argument("-w", "--width", action="store", type=int, dest="width", metavar="<width>",
-                        help="Specify docstring width before wrapping.")
+    parser.add_argument(
+        "-w",
+        "--width",
+        action="store",
+        type=int,
+        dest="width",
+        metavar="<width>",
+        help="Specify docstring width before wrapping.",
+    )
 
-    parser.add_argument("-I", action="append", type=str, dest="include_dirs", metavar="<dir>",
-                        help="Specify an directory to add to the list of include search paths.")
+    parser.add_argument(
+        "-I",
+        action="append",
+        type=str,
+        dest="include_dirs",
+        metavar="<dir>",
+        help="Specify an directory to add to the list of include search paths.",
+    )
 
-    parser.add_argument("-D", action="append", type=str, metavar="<macro>=<value>", dest="definitions",
-                        help="Specify a compiler definition, i.e. define <macro> to <value> (or 1 if <value> omitted).")
+    parser.add_argument(
+        "-D",
+        action="append",
+        type=str,
+        metavar="<macro>=<value>",
+        dest="definitions",
+        help="Specify a compiler definition, i.e. define <macro> to <value> (or 1 if <value> omitted).",
+    )
 
-    parser.add_argument("header", type=str, nargs='+', help="A header file to process.")
+    parser.add_argument("header", type=str, nargs="+", help="A header file to process.")
 
     [parsed_args, unparsed_args] = parser.parse_known_args()
 
@@ -130,8 +152,7 @@ def main():
             # append argument as is and hope for the best
             mkdoc_args.append(arg)
 
-    for header in parsed_args.header:
-        mkdoc_args.append(header)
+    mkdoc_args.extend(header for header in parsed_args.header)
 
     mkdoc(mkdoc_args, docstring_width, mkdoc_out)
 
