@@ -27,12 +27,13 @@ classifiers = [
 ]
 dynamic = ["version"]
 
-[project.optional-dependencies]
+[dependency-groups]
 test = [
     "pytest",
     "pybind11",
     "pytest-forked",
 ]
+dev = [{ include-group = "test" }]
 
 [project.scripts]
 pybind11-mkdoc = "pybind11_mkdoc:main"
