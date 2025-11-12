@@ -35,9 +35,9 @@ def _append_include_dir(args: list, include_dir: str, verbose: bool = True):
     """
 
     if os.path.isdir(include_dir):
-        args.append(f"-I{shlex.quote(include_dir)}")
+        args.append(f"-I{include_dir}")
     elif verbose:
-        print(f"Include directoy '{shlex.quote(include_dir)}' does not exist!")
+        print(f"Include directory {include_dir!r} does not exist!")
 
 
 def _append_definition(args: list, definition: str, verbose: bool = True):
@@ -61,9 +61,9 @@ def _append_definition(args: list, definition: str, verbose: bool = True):
     """
 
     try:
-        macro, value = definition.strip().split('=')
-        macro = shlex.quote(macro.strip())
-        value = shlex.quote(value.strip()) if value else '1'
+        macro, _, value = definition.partition('=')
+        macro = macro.strip()
+        value = value.strip() if value else '1'
 
         args.append(f"-D{macro}={value}")
     except ValueError as exc:
@@ -72,9 +72,9 @@ def _append_definition(args: list, definition: str, verbose: bool = True):
         if re.search(r'^[A-Za-z_][A-Za-z0-9_]*', definition):
             args.append(f"-D{definition}")
         else:
-            print(f"Failed to parse definition: {shlex.quote(definition)}")
+            print(f"Failed to parse definition: {definition}")
     except:
-        print(f"Failed to parse definition: {shlex.quote(definition)}")
+        print(f"Failed to parse definition: {definition}")
 
 
 
@@ -128,10 +128,10 @@ def main():
             _append_definition(mkdoc_args, arg[2:])
         else:
             # append argument as is and hope for the best
-            mkdoc_args.append(shlex.quote(arg))
+            mkdoc_args.append(arg)
 
     for header in parsed_args.header:
-        mkdoc_args.append(shlex.quote(header))
+        mkdoc_args.append(header)
 
     mkdoc(mkdoc_args, docstring_width, mkdoc_out)
 
