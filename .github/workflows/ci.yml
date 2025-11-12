@@ -35,35 +35,30 @@ jobs:
     - name: Test package
       run: python -m pytest --forked
       
-# Commented for now -- msys2 Clang (v15) and the clang Python package (v14) are incompatible
-#
-#  checks_windows:
-#    strategy:
-#      fail-fast: false
-#      matrix:
-#        python-version:
-#        - "3.8"
-#        - "3.9"
-#        runs-on:
-#        - windows-latest
-#    runs-on: ${{ matrix.runs-on }}
-#    name: Test • 🐍 ${{ matrix.python-version }} • ${{matrix.runs-on}}
-#    steps:
-#    - uses: actions/checkout@v5
-#    - uses: actions/setup-python@v6
-#      with:
-#        python-version: ${{ matrix.python-version }}
-#
-#    - name: Install package
-#      run: python -m pip install .[test]
-#
-#    - name: Install clang
-#      run: C:\msys64\usr\bin\pacman.exe -S clang64/mingw-w64-clang-x86_64-clang --noconfirm
-#
-#    - name: Test package
-#      env:
-#        LIBCLANG_PATH: C:\msys64\clang64\bin\libclang.dll 
-#      run: python -m pytest -n2
+  checks_windows:
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version:
+        - "3.8"
+        - "3.9"
+        - "3.10"
+        - "3.11"
+        runs-on:
+        - windows-latest
+    runs-on: ${{ matrix.runs-on }}
+    name: Test • 🐍 ${{ matrix.python-version }} • ${{matrix.runs-on}}
+    steps:
+    - uses: actions/checkout@v3
+    - uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install package
+      run: python -m pip install .[test]
+
+    - name: Test package
+      run: python -m pytest -n2
   
   dist:
     runs-on: ubuntu-latest
