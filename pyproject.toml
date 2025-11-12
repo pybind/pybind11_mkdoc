@@ -30,6 +30,6 @@ pybind11-mkdoc = "pybind11_mkdoc:main"
 test = [
     "pytest",
     "pybind11",
-    "pytest-xdist"
+    "pytest-forked"
 ]
 
