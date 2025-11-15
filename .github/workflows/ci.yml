@@ -9,31 +9,36 @@ on:
     - 'v*'
 
 jobs:
+  format:
+    runs-on: ubuntu-latest
+    name: Format
+    steps:
+    - uses: actions/checkout@v5
+    - uses: astral-sh/setup-uv@v7
+    - run: uvx hatch fmt
+
   checks:
     strategy:
       fail-fast: false
       matrix:
         python-version:
-        - "3.8"
         - "3.9"
-        - "3.10"
-        - "3.11"
+        - "3.12"
+        - "3.14"
         runs-on:
         - ubuntu-latest
-        - macos-latest
+        - macos-15-intel
     runs-on: ${{ matrix.runs-on }}
     name: Test • 🐍 ${{ matrix.python-version }} • ${{matrix.runs-on}}
     steps:
-    - uses: actions/checkout@v3
-    - uses: actions/setup-python@v4
+    - uses: actions/checkout@v5
+    - uses: actions/setup-python@v6
       with:
         python-version: ${{ matrix.python-version }}
-
-    - name: Install package
-      run: python -m pip install .[test]
+    - uses: astral-sh/setup-uv@v7
 
     - name: Test package
-      run: python -m pytest --forked
+      run: uv run --with "clang<19" --group test pytest --forked
       
 # Commented for now -- msys2 Clang (v15) and the clang Python package (v14) are incompatible
 #
@@ -49,13 +54,13 @@ jobs:
 #    runs-on: ${{ matrix.runs-on }}
 #    name: Test • 🐍 ${{ matrix.python-version }} • ${{matrix.runs-on}}
 #    steps:
-#    - uses: actions/checkout@v3
-#    - uses: actions/setup-python@v4
+#    - uses: actions/checkout@v5
+#    - uses: actions/setup-python@v6
 #      with:
 #        python-version: ${{ matrix.python-version }}
 #
 #    - name: Install package
-#      run: python -m pip install .[test]
+#      run: python -m pip install -e. --group test
 #
 #    - name: Install clang
 #      run: C:\msys64\usr\bin\pacman.exe -S clang64/mingw-w64-clang-x86_64-clang --noconfirm
@@ -69,13 +74,5 @@ jobs:
     runs-on: ubuntu-latest
     name: Build distribution
     steps:
-    - uses: actions/checkout@v3
-    - uses: actions/setup-python@v4
-
-    - name: Build
-      run: pipx run build
-
-    - uses: actions/upload-artifact@v2
-      with:
-        name: DistPackage
-        path: dist
+    - uses: actions/checkout@v5
+    - uses: hynek/build-and-inspect-python-package@v2

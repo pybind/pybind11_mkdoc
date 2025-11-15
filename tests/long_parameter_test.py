@@ -1,14 +1,10 @@
-import collections
 import os
-import time
-import sysconfig
 import sys
-
-import pytest
 
 import pybind11_mkdoc
 
 DIR = os.path.abspath(os.path.dirname(__file__))
+
 
 def test_long_parameter(capsys):
     comments = pybind11_mkdoc.mkdoc_lib.extract_all([os.path.join(DIR, "long_parameter_docs", "long_parameter.h")])
@@ -21,6 +17,4 @@ Parameter ``x``:
     malesuada fames ac. End first parameter description.)doc";
 """
 
-    print(res.out)
     assert expected in res.out
-
