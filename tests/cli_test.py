@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from os import system
@@ -53,7 +52,7 @@ vivamus at augue eget arcu dictum varius.)doc";
 """
 
 
-def test_simple_header_cli(capsys):
+def test_simple_header_cli():
     # Run pybind11-mkdoc and put the output in a temp file
     tf = NamedTemporaryFile(suffix=".h")
     header = DIR / "sample_header_docs" / "sample_header.h"
@@ -68,7 +67,7 @@ def test_simple_header_cli(capsys):
 
     assert res == expected
 
-def test_simple_header_with_spaces_cli(capsys):
+def test_simple_header_with_spaces_cli():
     # Run pybind11-mkdoc and put the output in a temp file
     tf = NamedTemporaryFile(suffix=".h")
     header = DIR / "sample_header_docs" / "sample header with spaces.h"
