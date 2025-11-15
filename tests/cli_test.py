@@ -2,7 +2,7 @@ from pathlib import Path
 from tempfile import NamedTemporaryFile
 from os import system
 
-DIR = Path(__file__).absolute().parents[0]
+DIR = Path(__file__).resolve().parent
 
 expected = """\
 /*
