@@ -1,6 +1,6 @@
+import subprocess
 from pathlib import Path
-from tempfile import NamedTemporaryFile
-from os import system
+
 
 DIR = Path(__file__).resolve().parent
 
@@ -52,32 +52,25 @@ vivamus at augue eget arcu dictum varius.)doc";
 """
 
 
-def test_simple_header_cli():
+def test_simple_header_cli(tmp_path: Path) -> None:
     # Run pybind11-mkdoc and put the output in a temp file
-    tf = NamedTemporaryFile(suffix=".h")
+    tf = tmp_path / "tmp.h"
     header = DIR / "sample_header_docs" / "sample_header.h"
-    exit_code = system(f"python -m pybind11_mkdoc -o {tf.name} {header}")
-
-    # Ensure pybind11-mkdoc ran successfully
-    assert exit_code == 0
+    subprocess.run([sys.executable, "-m", "pybind11_mkdoc", "-o", tf, header], check=True)
 
     # Ensure the header file matches
-    with open(tf.name, "r") as f:
-        res = f.read()
+    res = tf.read_text(encoding="utf-8")
 
     assert res == expected
 
-def test_simple_header_with_spaces_cli():
+def test_simple_header_with_spaces_cli(tmp_path: Path) -> None:
     # Run pybind11-mkdoc and put the output in a temp file
-    tf = NamedTemporaryFile(suffix=".h")
+    tf = tmp_path / "tmp.h"
     header = DIR / "sample_header_docs" / "sample header with spaces.h"
-    exit_code = system(f"python -m pybind11_mkdoc -o {tf.name} \"{header}\"")
+    subprocess.run([sys.executable, "-m", "pybind11_mkdoc", "-o", tf, header], check=True)
 
-    # Ensure pybind11-mkdoc ran successfully
-    assert exit_code == 0
 
     # Ensure the header file matches
-    with open(tf.name, "r") as f:
-        res = f.read()
+    res = tf.read_text(encoding="utf-8")
 
     assert res == expected
