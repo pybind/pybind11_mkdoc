@@ -9,7 +9,7 @@ be referenced to generate docstrings in pybind11 binding code.
 To install the latest development version:
 
 ```bash
-python -m pip install git+https://github.com/pybind/pybind11_mkdoc.git@master
+python -m pip install git+https://github.com/pybind/pybind11_mkdoc.git
 ```
 
 ## Usage
