@@ -48,7 +48,7 @@ This is the extended description for method1.
 Args:
     p1: I am a very long description for parameter 1. Let's ensure
         that this gets wrapped properly.
-    p2: I am a very long descripton for paramet 2. However, I'm broken
+    p2: I am a very long description for parameter 2. However, I'm broken
         out onto two lines. Will this be parsed correctly?
 
 Returns:
