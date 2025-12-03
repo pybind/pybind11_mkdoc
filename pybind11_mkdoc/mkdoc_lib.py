@@ -284,12 +284,12 @@ def process_comment(comment):
                 m = re.match(
                     rf"{indent_str}("
                     r"(?:[*\-•]\s)|(?:\(?\d+[\.)]\s)|(?:\w+:)"
-                    r")",
+                    r"\s*)",
                     line
                 )
                 if m: 
                     g = m.group(0)
-                    return g, indent_str + " " * len(g)
+                    return g, " " * len(g)
                 else:
                     return None, indent_str
 
@@ -305,7 +305,7 @@ def process_comment(comment):
                 para_text = " ".join(line.strip() for line in paragraph)
 
                 if prefix:
-                    content = para_text[len(prefix.strip()):]
+                    content = para_text[len(prefix.lstrip()):]
                     wrapper.initial_indent=prefix
                     wrapper.subsequent_indent=indent_str
                     if content == "":
