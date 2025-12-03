@@ -29,7 +29,7 @@ class Base {
      * This is the extended description for method1.
      *
      * @param p1 I am a very long description for parameter 1. Let's ensure that this gets wrapped properly.
-     * @param p2 I am a very long descripton for paramet 2.
+     * @param p2 I am a very long description for parameter 2.
      *           However, I'm broken out onto two lines. Will this be parsed correctly?
      *
      * @return An integer is what I return.
