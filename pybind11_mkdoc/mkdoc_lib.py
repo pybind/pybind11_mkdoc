@@ -111,6 +111,7 @@ param_re = re.compile(r"[\\@]param\s+([\w:]+)\s*(.*)")
 t_param_re = re.compile(r"[\\@]tparam\s+([\w:]+)\s*(.*)")
 return_re = re.compile(rf"[\\@]returns?\s+(.*)")
 raises_re = re.compile(rf"[\\@](?:exception|throws?)\s+([\w:]+)(.*)")
+any_dox_re = re.compile(rf"[\\@].*")
 
 def process_comment(comment):
     result = ""
@@ -155,24 +156,35 @@ def process_comment(comment):
     t_params = {}
     raises = {}
     ret = []
+    add_to = None
     for k,line in enumerate(lines):
         if m := param_re.match(line):
             name,text = m.groups()
             params[name] = text.strip()
             rm_lines.append(k)
+            add_to = (params,name)
         elif m := t_param_re.match(line):
             name,text = m.groups()
             t_params[name] = text.strip()
             rm_lines.append(k)
+            add_to = (t_params,name)
         elif m := return_re.match(line):
             text = m.groups()[0]
             ret.append(text.strip())
             rm_lines.append(k)
             rm_lines.append(k)
+            add_to = (rm_lines,len(rm_lines)-1)
         elif m := raises_re.match(line):
             name,text = m.groups()
             raises[name] = text.strip()
             rm_lines.append(k)
+            add_to = (raises, name)
+        elif (m := any_dox_re.match(line)) or line == "":
+            add_to = None
+        else:
+            if add_to is not None:
+                add_to[0][add_to[1]] += " " + line.strip()
+                rm_lines.append(k)
 
     # If we had any hits, then remove the old lines, fill with the new lines, and convert back to s
     if rm_lines:
@@ -273,12 +285,12 @@ def process_comment(comment):
                 m = re.match(
                     rf"{indent_str}("
                     r"(?:[*\-•]\s)|(?:\(?\d+[\.)]\s)|(?:\w+:)"
-                    r")",
+                    r"\s*)",
                     line
                 )
                 if m: 
                     g = m.group(0)
-                    return g, indent_str + " " * len(g)
+                    return g, " " * len(g)
                 else:
                     return None, indent_str
 
@@ -294,7 +306,7 @@ def process_comment(comment):
                 para_text = " ".join(line.strip() for line in paragraph)
 
                 if prefix:
-                    content = para_text[len(prefix.strip()):]
+                    content = para_text[len(prefix.lstrip()):]
                     wrapper.initial_indent=prefix
                     wrapper.subsequent_indent=indent_str
                     if content == "":
