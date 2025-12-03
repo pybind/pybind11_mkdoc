@@ -12,9 +12,9 @@ def test_long_parameter(capsys):
 
     res = capsys.readouterr()
     expected = """\
-Parameter ``x``:
-    - Begin first parameter description. Senectus et netus et
-    malesuada fames ac. End first parameter description.)doc";
+Args:
+    x: - Begin first parameter description. Senectus et netus et
+          malesuada fames ac. End first parameter description.)doc";
 """
 
     assert expected in res.out
