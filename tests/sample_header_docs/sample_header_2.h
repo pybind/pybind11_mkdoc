@@ -18,6 +18,8 @@ class Base {
      * @param p1 I am the first parameter.
      * @param p2 I am the second parameter.
      * @return An integer is what I return.
+     *
+     * @throws runtime_error Throws runtime error if p1 is empty.
      */
     int method1(std::vector<float> p1, std::map<std::string,std::string> p2);
 };

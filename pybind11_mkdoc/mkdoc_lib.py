@@ -110,6 +110,7 @@ def sanitize_name(name):
 param_re = re.compile(r"[\\@]param\s+([\w:]+)\s*(.*)")
 t_param_re = re.compile(r"[\\@]tparam\s+([\w:]+)\s*(.*)")
 return_re = re.compile(rf"[\\@]returns?\s+(.*)")
+raises_re = re.compile(rf"[\\@](?:exception|throws?)\s+([\w:]+)(.*)")
 
 def process_comment(comment):
     result = ""
@@ -147,11 +148,12 @@ def process_comment(comment):
     s = re.sub(rf"[\\@]b\s+{cpp_group}", r"**\1**", s)
     s = re.sub(rf"[\\@]ingroup\s+{cpp_group}", r"", s)
 
-    # Add arguments and return type
+    # Add arguments, return type, and exceptions
     lines = s.splitlines()
     rm_lines = []
     params = {}
     t_params = {}
+    raises = {}
     ret = []
     for k,line in enumerate(lines):
         if m := param_re.match(line):
@@ -166,6 +168,10 @@ def process_comment(comment):
             text = m.groups()[0]
             ret.append(text.strip())
             rm_lines.append(k)
+            rm_lines.append(k)
+        elif m := raises_re.match(line):
+            name,text = m.groups()
+            raises[name] = text.strip()
             rm_lines.append(k)
 
     # If we had any hits, then remove the old lines, fill with the new lines, and convert back to s
@@ -187,6 +193,10 @@ def process_comment(comment):
             new_lines.append("Returns:")
             new_lines += [f"    {text}" for text in ret]
             new_lines.append("")
+        if raises:
+            new_lines.append("Raises:")
+            new_lines += [f"    {name}: {text}" for name,text in raises.items()]
+            new_lines.append("")
         
         idx = rm_lines[-1]
         lines = lines[0:idx] + new_lines + lines[idx:]
@@ -204,9 +214,6 @@ def process_comment(comment):
         "sa": "See also",
         "see": "See also",
         "extends": "Extends",
-        "exception": "Throws",
-        "throws": "Throws",
-        "throw": "Throws",
     }.items():
         s = re.sub(rf"[\\@]{in_}\s*", rf"\n\n${out_}:\n\n", s)
 
@@ -258,7 +265,6 @@ def process_comment(comment):
             result += x.strip()
         else:
             wrapped = []
-
             paragraph = []
 
             def get_prefix_and_indent(line) -> tuple[str|None, str]:
@@ -306,7 +312,7 @@ def process_comment(comment):
 
             current_prefix = None
             current_indent = "" 
-            for line in lines:
+            for line in x.splitlines():
                 if not line.strip():
                     flush_paragraph()
                     wrapped.append(line)  # preserve blank lines
@@ -323,32 +329,6 @@ def process_comment(comment):
 
             flush_paragraph()
             result += "\n".join(wrapped)
-            # wrapped_lines = []
-            #for line in x.splitlines():
-            #    if not line.strip():
-            #        wrapped_lines.append(line)
-            #        continue
-
-            #    # Detect indentation
-            #    indent = len(line) - len(line.lstrip())
-            #    indent_str = " " * indent
-
-            #    # Detect bullet or numbered list prefix
-            #    # Examples matched:  "* ", "- ", "• ", "1. ", "2) ", "(3) "
-            #    m = re.match(rf"{indent_str}((?:[\*\-•]\s)|(?:\(?\d+[\.\)]\s))", line)
-            #    if m:
-            #        prefix = indent_str + m.group(1)
-            #        content = line[len(prefix):]
-            #        wrapper.initial_indent=prefix
-            #        wrapper.subsequent_indent=" " * len(prefix)
-            #    else:
-            #        content = line.lstrip()
-            #        wrapper.initial_indent=indent_str
-            #        wrapper.subsequent_indent=indent_str
-
-            #    wrapped_lines.append(wrapper.fill(content))
-
-            #result += "\n".join(wrapped_lines)
     return result.rstrip().lstrip("\n")
 
 
