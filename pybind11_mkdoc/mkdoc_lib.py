@@ -213,7 +213,7 @@ def process_comment(comment):
             new_lines.append("")
 
         idx = rm_lines[-1]
-        lines = lines[0:idx] + new_lines + lines[idx:]
+        lines = [*lines[0:idx], *new_lines, *lines[idx:]]
         s = "\n".join(lines)
 
     # Remove class and struct tags
