@@ -22,4 +22,20 @@ class Base {
      * @throws runtime_error Throws runtime error if p1 is empty.
      */
     int method1(std::vector<float> p1, std::map<std::string,std::string> p2);
+
+    /**
+     * @brief Description for method1.
+     *
+     * This is the extended description for method1.
+     *
+     * @param p1 I am a very long description for parameter 1. Let's ensure that this gets wrapped properly.
+     * @param p2 I am a very long descripton for paramet 2.
+     *           However, I'm broken out onto two lines. Will this be parsed correctly?
+     *
+     * @return An integer is what I return.
+     *
+     * @throw runtime_error Throws runtime error if p1 is 0.
+     * @exception invalid_argument Throws invalid_argument error if p2 is 0.
+     */
+    void method2(int p1, int p2);
 };
