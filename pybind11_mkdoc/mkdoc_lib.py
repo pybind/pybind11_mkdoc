@@ -109,9 +109,9 @@ def sanitize_name(name):
 
 param_re = re.compile(r"[\\@]param\s+([\w:]+)\s*(.*)")
 t_param_re = re.compile(r"[\\@]tparam\s+([\w:]+)\s*(.*)")
-return_re = re.compile(rf"[\\@]returns?\s+(.*)")
-raises_re = re.compile(rf"[\\@](?:exception|throws?)\s+([\w:]+)(.*)")
-any_dox_re = re.compile(rf"[\\@].*")
+return_re = re.compile(r"[\\@]returns?\s+(.*)")
+raises_re = re.compile(r"[\\@](?:exception|throws?)\s+([\w:]+)(.*)")
+any_dox_re = re.compile(r"[\\@].*")
 
 def process_comment(comment):
     result = ""
