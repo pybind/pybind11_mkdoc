@@ -107,6 +107,9 @@ def sanitize_name(name):
     name = re.sub("_$", "", re.sub("_+", "_", name))
     return "mkd_doc_" + name
 
+param_re = re.compile(r"[\\@]param\s+([\w:]+)\s*(.*)")
+t_param_re = re.compile(r"[\\@]tparam\s+([\w:]+)\s*(.*)")
+return_re = re.compile(rf"[\\@]returns?\s+(.*)")
 
 def process_comment(comment):
     result = ""
@@ -135,7 +138,6 @@ def process_comment(comment):
 
     # Doxygen tags
     cpp_group = r"([^\s]+)"
-    param_group = r"([\[\w:,\]]+)"
 
     s = result
     s = re.sub(rf"[\\@][cp]\s+{cpp_group}", r"``\1``", s)
@@ -144,15 +146,56 @@ def process_comment(comment):
     s = re.sub(rf"[\\@]em\s+{cpp_group}", r"*\1*", s)
     s = re.sub(rf"[\\@]b\s+{cpp_group}", r"**\1**", s)
     s = re.sub(rf"[\\@]ingroup\s+{cpp_group}", r"", s)
-    s = re.sub(rf"[\\@]param{param_group}?\s+{cpp_group}", r"\n\n$Parameter ``\2``:\n\n", s)
-    s = re.sub(rf"[\\@]tparam{param_group}?\s+{cpp_group}", r"\n\n$Template parameter ``\2``:\n\n", s)
+
+    # Add arguments and return type
+    lines = s.splitlines()
+    rm_lines = []
+    params = {}
+    t_params = {}
+    ret = []
+    for k,line in enumerate(lines):
+        if m := param_re.match(line):
+            name,text = m.groups()
+            params[name] = text.strip()
+            rm_lines.append(k)
+        elif m := t_param_re.match(line):
+            name,text = m.groups()
+            t_params[name] = text.strip()
+            rm_lines.append(k)
+        elif m := return_re.match(line):
+            text = m.groups()[0]
+            ret.append(text.strip())
+            rm_lines.append(k)
+            rm_lines.append(k)
+
+    # If we had any hits, then remove the old lines, fill with the new lines, and convert back to s
+    if rm_lines:
+        rm_lines.sort(reverse=True)
+        for k in rm_lines:
+            lines.pop(k)
+
+        new_lines = []
+        if params:
+            new_lines.append("Args:")
+            new_lines += [f"    {name}: {text}" for name,text in params.items()]
+            new_lines.append("")
+        if t_params:
+            new_lines.append("Template Args:")
+            new_lines += [f"    {name}: {text}" for name,text in t_params.items()]
+            new_lines.append("")
+        if ret:
+            new_lines.append("Returns:")
+            new_lines += [f"    {text}" for text in ret]
+            new_lines.append("")
+        
+        idx = rm_lines[-1]
+        lines = lines[0:idx] + new_lines + lines[idx:]
+        s = "\n".join(lines)
 
     # Remove class and struct tags
     s = re.sub(r"[\\@](class|struct)\s+.*", "", s)
 
     for in_, out_ in {
-        "returns": "Returns",
-        "return": "Returns",
         "authors": "Authors",
         "author": "Author",
         "copyright": "Copyright",
@@ -214,15 +257,98 @@ def process_comment(comment):
         elif in_code_segment:
             result += x.strip()
         else:
-            for y in re.split(r"(?: *\n *){2,}", x):
-                wrapped = wrapper.fill(re.sub(r"\s+", " ", y).strip())
-                if len(wrapped) > 0 and wrapped[0] == "$":
-                    result += wrapped[1:] + "\n"
-                    wrapper.initial_indent = wrapper.subsequent_indent = " " * 4
+            wrapped = []
+
+            paragraph = []
+
+            def get_prefix_and_indent(line) -> tuple[str|None, str]:
+                indent = len(line) - len(line.lstrip())
+                indent_str = " " * indent
+                m = re.match(
+                    rf"{indent_str}("
+                    r"(?:[*\-•]\s)|(?:\(?\d+[\.)]\s)|(?:\w+:)"
+                    r")",
+                    line
+                )
+                if m: 
+                    g = m.group(0)
+                    return g, indent_str + " " * len(g)
                 else:
-                    if len(wrapped) > 0:
-                        result += wrapped + "\n\n"
-                    wrapper.initial_indent = wrapper.subsequent_indent = ""
+                    return None, indent_str
+
+            def flush_paragraph():
+                if not paragraph:
+                    return
+
+                # Detect bullet/number from first line
+                first_line = paragraph[0]
+                prefix, indent_str = get_prefix_and_indent(first_line)
+
+                # Combine paragraph into single string (replace internal line breaks with space)
+                para_text = " ".join(line.strip() for line in paragraph)
+
+                if prefix:
+                    content = para_text[len(prefix.strip()):]
+                    wrapper.initial_indent=prefix
+                    wrapper.subsequent_indent=indent_str
+                    if content == "":
+                        # This paragraph is just the prefix
+                        wrapped.append(prefix)
+                        paragraph.clear()
+                        return
+                else:
+                    content = para_text.lstrip()
+                    wrapper.initial_indent=indent_str
+                    wrapper.subsequent_indent=indent_str
+
+                wrapped.append(wrapper.fill(content))
+                paragraph.clear()
+
+            current_prefix = None
+            current_indent = "" 
+            for line in lines:
+                if not line.strip():
+                    flush_paragraph()
+                    wrapped.append(line)  # preserve blank lines
+                    continue
+
+                prefix,indent = get_prefix_and_indent(line)
+                if paragraph and ((indent != current_indent) or (prefix and prefix != current_prefix)):
+                    # Prefix/indent changed → start new paragraph
+                    flush_paragraph()
+
+                paragraph.append(line)
+                current_prefix = prefix
+                current_indent = indent 
+
+            flush_paragraph()
+            result += "\n".join(wrapped)
+            # wrapped_lines = []
+            #for line in x.splitlines():
+            #    if not line.strip():
+            #        wrapped_lines.append(line)
+            #        continue
+
+            #    # Detect indentation
+            #    indent = len(line) - len(line.lstrip())
+            #    indent_str = " " * indent
+
+            #    # Detect bullet or numbered list prefix
+            #    # Examples matched:  "* ", "- ", "• ", "1. ", "2) ", "(3) "
+            #    m = re.match(rf"{indent_str}((?:[\*\-•]\s)|(?:\(?\d+[\.\)]\s))", line)
+            #    if m:
+            #        prefix = indent_str + m.group(1)
+            #        content = line[len(prefix):]
+            #        wrapper.initial_indent=prefix
+            #        wrapper.subsequent_indent=" " * len(prefix)
+            #    else:
+            #        content = line.lstrip()
+            #        wrapper.initial_indent=indent_str
+            #        wrapper.subsequent_indent=indent_str
+
+            #    wrapped_lines.append(wrapper.fill(content))
+
+            #result += "\n".join(wrapped_lines)
     return result.rstrip().lstrip("\n")
 
 
