@@ -171,15 +171,14 @@ def process_comment(comment):
         elif m := return_re.match(line):
             text = m.groups()[0]
             ret.append(text.strip())
+            add_to = (ret,len(ret)-1)
             rm_lines.append(k)
-            rm_lines.append(k)
-            add_to = (rm_lines,len(rm_lines)-1)
         elif m := raises_re.match(line):
             name,text = m.groups()
             raises[name] = text.strip()
-            rm_lines.append(k)
             add_to = (raises, name)
-        elif (m := any_dox_re.match(line)) or line == "":
+            rm_lines.append(k)
+        elif m := any_dox_re.match(line):
             add_to = None
         else:
             if add_to is not None:
@@ -285,12 +284,12 @@ def process_comment(comment):
                 m = re.match(
                     rf"{indent_str}("
                     r"(?:[*\-•]\s)|(?:\(?\d+[\.)]\s)|(?:\w+:)"
-                    r"\s*)",
+                    r")",
                     line
                 )
                 if m: 
                     g = m.group(0)
-                    return g, " " * len(g)
+                    return g, indent_str + " " * len(g)
                 else:
                     return None, indent_str
 
@@ -306,7 +305,7 @@ def process_comment(comment):
                 para_text = " ".join(line.strip() for line in paragraph)
 
                 if prefix:
-                    content = para_text[len(prefix.lstrip()):]
+                    content = para_text[len(prefix.strip()):]
                     wrapper.initial_indent=prefix
                     wrapper.subsequent_indent=indent_str
                     if content == "":
