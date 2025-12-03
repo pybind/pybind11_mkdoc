@@ -5,6 +5,8 @@
 #  Extract documentation from C++ header files to use it in Python bindings
 #
 
+from __future__ import annotations
+
 import contextlib
 import ctypes.util
 import os
@@ -107,11 +109,13 @@ def sanitize_name(name):
     name = re.sub("_$", "", re.sub("_+", "_", name))
     return "mkd_doc_" + name
 
+
 param_re = re.compile(r"[\\@]param\s+([\w:]+)\s*(.*)")
 t_param_re = re.compile(r"[\\@]tparam\s+([\w:]+)\s*(.*)")
 return_re = re.compile(r"[\\@]returns?\s+(.*)")
 raises_re = re.compile(r"[\\@](?:exception|throws?)\s+([\w:]+)(.*)")
 any_dox_re = re.compile(r"[\\@].*")
+
 
 def process_comment(comment):
     result = ""
@@ -157,33 +161,32 @@ def process_comment(comment):
     raises = {}
     ret = []
     add_to = None
-    for k,line in enumerate(lines):
+    for k, line in enumerate(lines):
         if m := param_re.match(line):
-            name,text = m.groups()
+            name, text = m.groups()
             params[name] = text.strip()
             rm_lines.append(k)
-            add_to = (params,name)
+            add_to = (params, name)
         elif m := t_param_re.match(line):
-            name,text = m.groups()
+            name, text = m.groups()
             t_params[name] = text.strip()
             rm_lines.append(k)
-            add_to = (t_params,name)
+            add_to = (t_params, name)
         elif m := return_re.match(line):
             text = m.groups()[0]
             ret.append(text.strip())
-            add_to = (ret,len(ret)-1)
+            add_to = (ret, len(ret) - 1)
             rm_lines.append(k)
         elif m := raises_re.match(line):
-            name,text = m.groups()
+            name, text = m.groups()
             raises[name] = text.strip()
             add_to = (raises, name)
             rm_lines.append(k)
         elif m := any_dox_re.match(line):
             add_to = None
-        else:
-            if add_to is not None:
-                add_to[0][add_to[1]] += " " + line.strip()
-                rm_lines.append(k)
+        elif add_to is not None:
+            add_to[0][add_to[1]] += " " + line.strip()
+            rm_lines.append(k)
 
     # If we had any hits, then remove the old lines, fill with the new lines, and convert back to s
     if rm_lines:
@@ -194,11 +197,11 @@ def process_comment(comment):
         new_lines = []
         if params:
             new_lines.append("Args:")
-            new_lines += [f"    {name}: {text}" for name,text in params.items()]
+            new_lines += [f"    {name}: {text}" for name, text in params.items()]
             new_lines.append("")
         if t_params:
             new_lines.append("Template Args:")
-            new_lines += [f"    {name}: {text}" for name,text in t_params.items()]
+            new_lines += [f"    {name}: {text}" for name, text in t_params.items()]
             new_lines.append("")
         if ret:
             new_lines.append("Returns:")
@@ -206,9 +209,9 @@ def process_comment(comment):
             new_lines.append("")
         if raises:
             new_lines.append("Raises:")
-            new_lines += [f"    {name}: {text}" for name,text in raises.items()]
+            new_lines += [f"    {name}: {text}" for name, text in raises.items()]
             new_lines.append("")
-        
+
         idx = rm_lines[-1]
         lines = lines[0:idx] + new_lines + lines[idx:]
         s = "\n".join(lines)
@@ -278,22 +281,21 @@ def process_comment(comment):
             wrapped = []
             paragraph = []
 
-            def get_prefix_and_indent(line) -> tuple[str|None, str]:
+            def get_prefix_and_indent(line) -> tuple[str | None, str]:
                 indent = len(line) - len(line.lstrip())
                 indent_str = " " * indent
                 m = re.match(
                     rf"{indent_str}("
                     r"(?:[*\-•]\s)|(?:\(?\d+[\.)]\s)|(?:\w+:)"
                     r"\s*)",
-                    line
+                    line,
                 )
-                if m: 
+                if m:
                     g = m.group(0)
                     return g, " " * len(g)
-                else:
-                    return None, indent_str
+                return None, indent_str
 
-            def flush_paragraph():
+            def flush_paragraph(paragraph=paragraph, wrapped=wrapped):
                 if not paragraph:
                     return
 
@@ -305,9 +307,9 @@ def process_comment(comment):
                 para_text = " ".join(line.strip() for line in paragraph)
 
                 if prefix:
-                    content = para_text[len(prefix.lstrip()):]
-                    wrapper.initial_indent=prefix
-                    wrapper.subsequent_indent=indent_str
+                    content = para_text[len(prefix.lstrip()) :]
+                    wrapper.initial_indent = prefix
+                    wrapper.subsequent_indent = indent_str
                     if content == "":
                         # This paragraph is just the prefix
                         wrapped.append(prefix)
@@ -315,28 +317,28 @@ def process_comment(comment):
                         return
                 else:
                     content = para_text.lstrip()
-                    wrapper.initial_indent=indent_str
-                    wrapper.subsequent_indent=indent_str
+                    wrapper.initial_indent = indent_str
+                    wrapper.subsequent_indent = indent_str
 
                 wrapped.append(wrapper.fill(content))
                 paragraph.clear()
 
             current_prefix = None
-            current_indent = "" 
+            current_indent = ""
             for line in x.splitlines():
                 if not line.strip():
                     flush_paragraph()
                     wrapped.append(line)  # preserve blank lines
                     continue
 
-                prefix,indent = get_prefix_and_indent(line)
+                prefix, indent = get_prefix_and_indent(line)
                 if paragraph and ((indent != current_indent) or (prefix and prefix != current_prefix)):
                     # Prefix/indent changed → start new paragraph
                     flush_paragraph()
 
                 paragraph.append(line)
                 current_prefix = prefix
-                current_indent = indent 
+                current_indent = indent
 
             flush_paragraph()
             result += "\n".join(wrapped)
@@ -417,10 +419,7 @@ def read_args(args):
             if os.path.isfile(library_file):
                 cindex.Config.set_library_file(library_file)
             else:
-                msg = (
-                    "Failed to find libclang.dll! "
-                    "Set the LIBCLANG_PATH environment variable to provide a path to it."
-                )
+                msg = "Failed to find libclang.dll! Set the LIBCLANG_PATH environment variable to provide a path to it."
                 raise FileNotFoundError(msg)
         else:
             library_file = ctypes.util.find_library("libclang.dll")
@@ -557,7 +556,7 @@ def write_header(comments, out_file=sys.stdout):
     for name, _, comment in sorted(comments, key=lambda x: (x[0], x[1])):
         if name == name_prev:
             name_ctr += 1
-            name = name + "_%i" % name_ctr
+            name = name + f"_{name_ctr}"
         else:
             name_prev = name
             name_ctr = 1

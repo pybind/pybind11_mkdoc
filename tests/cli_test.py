@@ -1,5 +1,5 @@
-import sys
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -8,6 +8,7 @@ DIR = Path(__file__).resolve().parent
 
 with open(DIR / "sample_header_docs" / "sample_header_truth.h") as f:
     expected = f.read()
+
 
 @pytest.mark.parametrize(
     "name",
