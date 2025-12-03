@@ -173,7 +173,7 @@ def process_comment(comment):
             rm_lines.append(k)
             add_to = (t_params, name)
         elif m := return_re.match(line):
-            text = m.groups()[0]
+            text, = m.groups()
             ret.append(text.strip())
             add_to = (ret, len(ret) - 1)
             rm_lines.append(k)
