@@ -5,6 +5,8 @@
 #  Extract documentation from C++ header files to use it in Python bindings
 #
 
+from __future__ import annotations
+
 import contextlib
 import ctypes.util
 import os
@@ -108,6 +110,13 @@ def sanitize_name(name):
     return "mkd_doc_" + name
 
 
+param_re = re.compile(r"[\\@]param\s+([\w:]+)\s*(.*)")
+t_param_re = re.compile(r"[\\@]tparam\s+([\w:]+)\s*(.*)")
+return_re = re.compile(r"[\\@]returns?\s+(.*)")
+raises_re = re.compile(r"[\\@](?:exception|throws?)\s+([\w:]+)(.*)")
+any_dox_re = re.compile(r"[\\@].*")
+
+
 def process_comment(comment):
     result = ""
 
@@ -135,7 +144,6 @@ def process_comment(comment):
 
     # Doxygen tags
     cpp_group = r"([^\s]+)"
-    param_group = r"([\[\w:,\]]+)"
 
     s = result
     s = re.sub(rf"[\\@][cp]\s+{cpp_group}", r"``\1``", s)
@@ -144,15 +152,74 @@ def process_comment(comment):
     s = re.sub(rf"[\\@]em\s+{cpp_group}", r"*\1*", s)
     s = re.sub(rf"[\\@]b\s+{cpp_group}", r"**\1**", s)
     s = re.sub(rf"[\\@]ingroup\s+{cpp_group}", r"", s)
-    s = re.sub(rf"[\\@]param{param_group}?\s+{cpp_group}", r"\n\n$Parameter ``\2``:\n\n", s)
-    s = re.sub(rf"[\\@]tparam{param_group}?\s+{cpp_group}", r"\n\n$Template parameter ``\2``:\n\n", s)
+
+    # Add arguments, return type, and exceptions
+    lines = s.splitlines()
+    rm_lines = []
+    params = {}
+    t_params = {}
+    raises = {}
+    ret = []
+    add_to = None
+    for k, line in enumerate(lines):
+        if m := param_re.match(line):
+            name, text = m.groups()
+            params[name] = text.strip()
+            rm_lines.append(k)
+            add_to = (params, name)
+        elif m := t_param_re.match(line):
+            name, text = m.groups()
+            t_params[name] = text.strip()
+            rm_lines.append(k)
+            add_to = (t_params, name)
+        elif m := return_re.match(line):
+            text, = m.groups()
+            ret.append(text.strip())
+            add_to = (ret, len(ret) - 1)
+            rm_lines.append(k)
+        elif m := raises_re.match(line):
+            name, text = m.groups()
+            raises[name] = text.strip()
+            add_to = (raises, name)
+            rm_lines.append(k)
+        elif m := any_dox_re.match(line):
+            add_to = None
+        elif add_to is not None:
+            add_to[0][add_to[1]] += " " + line.strip()
+            rm_lines.append(k)
+
+    # If we had any hits, then remove the old lines, fill with the new lines, and convert back to s
+    if rm_lines:
+        rm_lines.sort(reverse=True)
+        for k in rm_lines:
+            lines.pop(k)
+
+        new_lines = []
+        if params:
+            new_lines.append("Args:")
+            new_lines += [f"    {name}: {text}" for name, text in params.items()]
+            new_lines.append("")
+        if t_params:
+            new_lines.append("Template Args:")
+            new_lines += [f"    {name}: {text}" for name, text in t_params.items()]
+            new_lines.append("")
+        if ret:
+            new_lines.append("Returns:")
+            new_lines += [f"    {text}" for text in ret]
+            new_lines.append("")
+        if raises:
+            new_lines.append("Raises:")
+            new_lines += [f"    {name}: {text}" for name, text in raises.items()]
+            new_lines.append("")
+
+        idx = rm_lines[-1]
+        lines = [*lines[0:idx], *new_lines, *lines[idx:]]
+        s = "\n".join(lines)
 
     # Remove class and struct tags
     s = re.sub(r"[\\@](class|struct)\s+.*", "", s)
 
     for in_, out_ in {
-        "returns": "Returns",
-        "return": "Returns",
         "authors": "Authors",
         "author": "Author",
         "copyright": "Copyright",
@@ -161,9 +228,6 @@ def process_comment(comment):
         "sa": "See also",
         "see": "See also",
         "extends": "Extends",
-        "exception": "Throws",
-        "throws": "Throws",
-        "throw": "Throws",
     }.items():
         s = re.sub(rf"[\\@]{in_}\s*", rf"\n\n${out_}:\n\n", s)
 
@@ -214,15 +278,70 @@ def process_comment(comment):
         elif in_code_segment:
             result += x.strip()
         else:
-            for y in re.split(r"(?: *\n *){2,}", x):
-                wrapped = wrapper.fill(re.sub(r"\s+", " ", y).strip())
-                if len(wrapped) > 0 and wrapped[0] == "$":
-                    result += wrapped[1:] + "\n"
-                    wrapper.initial_indent = wrapper.subsequent_indent = " " * 4
+            wrapped = []
+            paragraph = []
+
+            def get_prefix_and_indent(line) -> tuple[str | None, str]:
+                indent = len(line) - len(line.lstrip())
+                indent_str = " " * indent
+                m = re.match(
+                    rf"{indent_str}("
+                    r"(?:[*\-•]\s)|(?:\(?\d+[\.)]\s)|(?:\w+:)"
+                    r"\s*)",
+                    line,
+                )
+                if m:
+                    g = m.group(0)
+                    return g, " " * len(g)
+                return None, indent_str
+
+            def flush_paragraph(paragraph=paragraph, wrapped=wrapped):
+                if not paragraph:
+                    return
+
+                # Detect bullet/number from first line
+                first_line = paragraph[0]
+                prefix, indent_str = get_prefix_and_indent(first_line)
+
+                # Combine paragraph into single string (replace internal line breaks with space)
+                para_text = " ".join(line.strip() for line in paragraph)
+
+                if prefix:
+                    content = para_text[len(prefix.lstrip()) :]
+                    wrapper.initial_indent = prefix
+                    wrapper.subsequent_indent = indent_str
+                    if content == "":
+                        # This paragraph is just the prefix
+                        wrapped.append(prefix)
+                        paragraph.clear()
+                        return
                 else:
-                    if len(wrapped) > 0:
-                        result += wrapped + "\n\n"
-                    wrapper.initial_indent = wrapper.subsequent_indent = ""
+                    content = para_text.lstrip()
+                    wrapper.initial_indent = indent_str
+                    wrapper.subsequent_indent = indent_str
+
+                wrapped.append(wrapper.fill(content))
+                paragraph.clear()
+
+            current_prefix = None
+            current_indent = ""
+            for line in x.splitlines():
+                if not line.strip():
+                    flush_paragraph()
+                    wrapped.append(line)  # preserve blank lines
+                    continue
+
+                prefix, indent = get_prefix_and_indent(line)
+                if paragraph and ((indent != current_indent) or (prefix and prefix != current_prefix)):
+                    # Prefix/indent changed → start new paragraph
+                    flush_paragraph()
+
+                paragraph.append(line)
+                current_prefix = prefix
+                current_indent = indent
+
+            flush_paragraph()
+            result += "\n".join(wrapped)
     return result.rstrip().lstrip("\n")
 
 
@@ -300,10 +419,7 @@ def read_args(args):
             if os.path.isfile(library_file):
                 cindex.Config.set_library_file(library_file)
             else:
-                msg = (
-                    "Failed to find libclang.dll! "
-                    "Set the LIBCLANG_PATH environment variable to provide a path to it."
-                )
+                msg = "Failed to find libclang.dll! Set the LIBCLANG_PATH environment variable to provide a path to it."
                 raise FileNotFoundError(msg)
         else:
             library_file = ctypes.util.find_library("libclang.dll")
@@ -423,6 +539,7 @@ def write_header(comments, out_file=sys.stdout):
 #define MKD_DOC3(n1, n2, n3)                               mkd_doc_##n1##_##n2##_##n3
 #define MKD_DOC4(n1, n2, n3, n4)                           mkd_doc_##n1##_##n2##_##n3##_##n4
 #define MKD_DOC5(n1, n2, n3, n4, n5)                       mkd_doc_##n1##_##n2##_##n3##_##n4##_##n5
+#define MKD_DOC6(n1, n2, n3, n4, n5, n6)                   mkd_doc_##n1##_##n2##_##n3##_##n4##_##n5##_##n6
 #define MKD_DOC7(n1, n2, n3, n4, n5, n6, n7)               mkd_doc_##n1##_##n2##_##n3##_##n4##_##n5##_##n6##_##n7
 #define DOC(...)                                           MKD_EXPAND(MKD_EXPAND(MKD_CAT2(MKD_DOC, MKD_VA_SIZE(__VA_ARGS__)))(__VA_ARGS__))
 
@@ -439,7 +556,7 @@ def write_header(comments, out_file=sys.stdout):
     for name, _, comment in sorted(comments, key=lambda x: (x[0], x[1])):
         if name == name_prev:
             name_ctr += 1
-            name = name + "_%i" % name_ctr
+            name = name + f"_{name_ctr}"
         else:
             name_prev = name
             name_ctr = 1
