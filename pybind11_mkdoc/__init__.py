@@ -76,7 +76,7 @@ def _append_definition(args: list, definition: str):
 
 def get_cmake_dir() -> str:
     """
-    Return the path to the pybind11 CMake module directory.
+    Return the path to the pybind11_mkdoc CMake module directory.
     """
     cmake_installed_path = Path(__file__).parent / "share" / "cmake" / "pybind11_mkdoc"
     if cmake_installed_path.exists():
