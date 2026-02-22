@@ -38,4 +38,11 @@ class Base {
      * @exception invalid_argument Throws invalid_argument error if p2 is 0.
      */
     void method2(int p1, int p2);
+
+#ifdef MY_EXTRA_DEFINE
+    /**
+     * @brief A method that is only included if MY_EXTRA_DEFINE is defined.
+     */
+    void method3();
+#endif
 };

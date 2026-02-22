@@ -28,6 +28,7 @@ target_include_directories(my_pybind11_module PRIVATE ${CMAKE_CURRENT_SOURCE_DIR
 pybind11_mkdoc(
     OUTPUT my_module_docs.h 
     PYBIND11_MODULE my_pybind11_module
+    EXTRA_ARGS $ENV{PYBIND11_TEST_EXTRA_ARGS}
     HEADERS 
         "../sample_header_docs/sample header with spaces.h"
         ${CMAKE_CURRENT_SOURCE_DIR}/../sample_header_docs/sample_header_2.h
