@@ -1,7 +1,8 @@
 # This function is used to run pybind11-mkdoc for the headers of a pybind11 module.
-# In addition, this will automatically add the current binary directory to the 
-# pybind11 module's includes, so it can easily be included when compiling the
-# module.
+# In addition, this will also add target dependencies so the pybind11-mkdoc header 
+# file is generated before the pybind11 module. Also, this will automatically add 
+# the current binary directory to the pybind11 module's includes, so it can 
+# easily be included when compiling the module.
 #
 # The required parameters are:
 # * OUTPUT - The name of the output file.
@@ -13,7 +14,7 @@
 # * EXTRA_ARGS - This string argument will be added verbatim to the pybind11-mkdoc command.
 #
 # Example usage:
-# pybind11_add_module(my_pybind11_module src/my_pybind11_module.cc my_byind11_module_doc.h)
+# pybind11_add_module(my_pybind11_module src/my_pybind11_module.cc)
 # pybind11_mkdoc(
 #     OUTPUT my_pybind11_module_doc.h 
 #     PYBIND11_MODULE my_pybind11_module
@@ -45,14 +46,22 @@ function (pybind11_mkdoc)
         endif()
     endforeach()
 
-    # Add a custom command for the full header file location that runs pybind11-mkdoc
+    # Add a custom target and command for the full header file location that runs pybind11-mkdoc
     # We automatically include the source directory and build/include
+    add_custom_target(
+        pybind11_mkdoc_${arg_OUTPUT}
+        DEPENDS ${arg_OUTPUT}
+    )
+
     add_custom_command(
         OUTPUT ${arg_OUTPUT}
-        COMMAND Python::Interpreter -m pybind11_mkdoc ${arg_EXTRA_ARGS} -o ${arg_OUTPUT} "$<$<BOOL:${prop}>:-I$<JOIN:${prop},;-I>>" ${HEADERS}
+        COMMAND ${Python_EXECUTABLE} -m pybind11_mkdoc ${arg_EXTRA_ARGS} -o ${arg_OUTPUT} "$<$<BOOL:${prop}>:-I$<JOIN:${prop},;-I>>" ${HEADERS}
         DEPENDS ${HEADERS}
         COMMAND_EXPAND_LISTS
     )
+
+    # Add a dependency so that the pybind11-mkdoc command runs before we try to compile the pybind11 module
+    add_dependencies(${arg_PYBIND11_MODULE} pybind11_mkdoc_${arg_OUTPUT})
 
     # Add the current binary directory to the pybind11 module so it can be included easily
     target_include_directories(${arg_PYBIND11_MODULE} PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
