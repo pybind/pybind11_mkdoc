@@ -38,7 +38,7 @@ jobs:
     - uses: astral-sh/setup-uv@v7
 
     - name: Test package
-      run: uv run --with "clang<19" --group test pytest --forked
+      run: uv sync --group test && uv run --with "clang<19" --group test pytest --forked
       
 # Commented for now -- msys2 Clang (v15) and the clang Python package (v14) are incompatible
 #
