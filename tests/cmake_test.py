@@ -2,8 +2,6 @@ import os
 import subprocess
 from pathlib import Path
 
-import pytest
-
 DIR = Path(__file__).resolve().parent
 
 
@@ -14,12 +12,13 @@ def test_pybind11_mkdoc_cmake(tmp_path: Path) -> None:
     subprocess.run(["cmake", "--build", build_dir], check=True)
 
     # Ensure the header file matches
-    res = (build_dir/"my_module_docs.h").read_text(encoding="utf-8")
+    res = (build_dir / "my_module_docs.h").read_text(encoding="utf-8")
 
     with open(DIR / "cmake_docs" / "my_module_docs_truth.h") as f:
         expected = f.read()
 
     assert res == expected
+
 
 def test_pybind11_mkdoc_cmake_extra_args(tmp_path: Path) -> None:
     # Run pybind11-mkdoc and put the output in a temp file
@@ -31,7 +30,7 @@ def test_pybind11_mkdoc_cmake_extra_args(tmp_path: Path) -> None:
     subprocess.run(["cmake", "--build", build_dir], check=True, env=env)
 
     # Ensure the header file matches
-    res = (build_dir/"my_module_docs.h").read_text(encoding="utf-8")
+    res = (build_dir / "my_module_docs.h").read_text(encoding="utf-8")
 
     with open(DIR / "cmake_docs" / "my_module_docs_extra_truth.h") as f:
         expected = f.read()

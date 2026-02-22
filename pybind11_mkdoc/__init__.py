@@ -82,7 +82,8 @@ def get_cmake_dir() -> str:
     if cmake_installed_path.exists():
         return str(cmake_installed_path)
 
-    raise ImportError("pybind11_mkdoc cmake files not found.")
+    msg = "pybind11_mkdoc cmake files not found."
+    raise ImportError(msg)
 
 
 def main():
