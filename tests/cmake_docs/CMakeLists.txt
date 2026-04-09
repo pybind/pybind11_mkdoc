@@ -10,8 +10,6 @@ execute_process(
     OUTPUT_VARIABLE pybind11_DIR
     OUTPUT_STRIP_TRAILING_WHITESPACE
 )
-# This is needed for CMake < 3.27. After Cmake 3.27+, can remove setting PYBIND11_FINDPYTHON.
-set(PYBIND11_FINDPYTHON ON)
 find_package(pybind11 3.0 REQUIRED CONFIG)
 
 # Find pybind11-mkdoc
