@@ -1,0 +1,38 @@
+{
+  "version": 6,
+  "configurePresets": [
+    {
+      "name": "default",
+      "displayName": "Default configure",
+      "binaryDir": "build",
+      "cacheVariables": {
+        "CMAKE_INSTALL_PREFIX": "../pybind11_mkdoc/share/cmake"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "default",
+      "displayName": "Default build",
+      "configurePreset": "default"
+    }
+  ],
+  "installPresets": [
+    {
+      "name": "default",
+      "displayName": "Default install",
+      "configurePreset": "default"
+    }
+  ],
+  "workflowPresets": [
+    {
+      "name": "default",
+      "displayName": "Configure, build and install",
+      "steps": [
+        { "type": "configure", "name": "default" },
+        { "type": "build", "name": "default" },
+        { "type": "install", "name": "default" }
+      ]
+    }
+  ]
+}
