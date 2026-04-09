@@ -15,13 +15,12 @@
       "name": "default",
       "displayName": "Default build",
       "configurePreset": "default"
-    }
-  ],
-  "installPresets": [
+    },
     {
-      "name": "default",
+      "name": "default-install",
       "displayName": "Default install",
-      "configurePreset": "default"
+      "configurePreset": "default",
+      "targets": ["install"]
     }
   ],
   "workflowPresets": [
@@ -31,7 +30,7 @@
       "steps": [
         { "type": "configure", "name": "default" },
         { "type": "build", "name": "default" },
-        { "type": "install", "name": "default" }
+        { "type": "build", "name": "default-install" }
       ]
     }
   ]
