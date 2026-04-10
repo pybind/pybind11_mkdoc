@@ -10,6 +10,14 @@
       }
     }
   ],
+  "buildPresets": [
+    {
+      "name": "default-install",
+      "displayName": "Default install",
+      "configurePreset": "default",
+      "targets": ["install"]
+    }
+  ],
   "workflowPresets": [
     {
       "name": "default",
