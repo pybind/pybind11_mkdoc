@@ -60,6 +60,7 @@ function (pybind11_mkdoc)
         COMMAND_EXPAND_LISTS
     )
 
+    # Add a dependency so that the pybind11-mkdoc command runs before we try to compile the pybind11 module
     add_dependencies(${arg_PYBIND11_MODULE} pybind11_mkdoc_${arg_OUTPUT})
 
     # Add the current binary directory to the pybind11 module so it can be included easily
