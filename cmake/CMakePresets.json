@@ -16,7 +16,6 @@
       "displayName": "Configure, build and install",
       "steps": [
         { "type": "configure", "name": "default" },
-        { "type": "build", "name": "default" },
         { "type": "build", "name": "default-install" }
       ]
     }
