@@ -1,3 +1,6 @@
+# Build artifacts from generating cmake files
+cmake/build
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

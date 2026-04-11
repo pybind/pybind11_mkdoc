@@ -7,6 +7,7 @@ This is a package for building pybind11 docstrings from C++ header comments.
 import argparse
 import os
 import re
+from pathlib import Path
 
 from pybind11_mkdoc.mkdoc_lib import mkdoc
 
@@ -71,6 +72,18 @@ def _append_definition(args: list, definition: str):
             pass
     except Exception:
         pass
+
+
+def get_cmake_dir() -> Path:
+    """
+    Return the path to the pybind11_mkdoc CMake module directory.
+    """
+    cmake_installed_path = Path(__file__).parent / "share" / "cmake" / "pybind11_mkdoc"
+    if cmake_installed_path.exists():
+        return cmake_installed_path
+
+    msg = "pybind11_mkdoc cmake files not found."
+    raise ImportError(msg)
 
 
 def main():

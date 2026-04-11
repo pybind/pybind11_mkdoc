@@ -1,0 +1,6 @@
+@PACKAGE_INIT@
+
+include("${CMAKE_CURRENT_LIST_DIR}/pybind11_mkdoc_functions.cmake")
+
+# If you export targets:
+# include("${CMAKE_CURRENT_LIST_DIR}/my_pkgTargets.cmake")
