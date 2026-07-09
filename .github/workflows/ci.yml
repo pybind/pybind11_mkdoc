@@ -13,8 +13,8 @@ jobs:
     runs-on: ubuntu-latest
     name: Format
     steps:
-    - uses: actions/checkout@v6
-    - uses: astral-sh/setup-uv@v8.1.0
+    - uses: actions/checkout@v7
+    - uses: astral-sh/setup-uv@v8.2.0
     - run: uvx hatch fmt
 
   checks:
@@ -31,11 +31,11 @@ jobs:
     runs-on: ${{ matrix.runs-on }}
     name: Test • 🐍 ${{ matrix.python-version }} • ${{matrix.runs-on}}
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - uses: actions/setup-python@v6
       with:
         python-version: ${{ matrix.python-version }}
-    - uses: astral-sh/setup-uv@v8.1.0
+    - uses: astral-sh/setup-uv@v8.2.0
 
     - name: Test package
       run: uv run --with "clang<19" --group test pytest --forked
@@ -54,7 +54,7 @@ jobs:
 #    runs-on: ${{ matrix.runs-on }}
 #    name: Test • 🐍 ${{ matrix.python-version }} • ${{matrix.runs-on}}
 #    steps:
-#    - uses: actions/checkout@v6
+#    - uses: actions/checkout@v7
 #    - uses: actions/setup-python@v6
 #      with:
 #        python-version: ${{ matrix.python-version }}
@@ -74,5 +74,5 @@ jobs:
     runs-on: ubuntu-latest
     name: Build distribution
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - uses: hynek/build-and-inspect-python-package@v2
