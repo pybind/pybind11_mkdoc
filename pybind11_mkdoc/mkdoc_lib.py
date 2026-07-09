@@ -321,13 +321,8 @@ def _consume_doxygen_sections(s):
         if command in SECTION_HEADINGS:
             heading = SECTION_HEADINGS[command]
             if heading is None:
-                arg = param_arg_re.match(rest)
-                if arg:
-                    heading, rest = arg.groups()
-                    heading = heading.strip().rstrip(":")
-                    rest = rest.strip()
-                else:
-                    heading = "Note"
+                heading = rest.strip().rstrip(":") or "Note"
+                rest = ""
             sections.append([heading, [rest] if rest else []])
             active = ("section", sections)
             continue

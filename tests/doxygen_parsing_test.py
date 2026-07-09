@@ -88,3 +88,83 @@ value += 2;
 ```"""
 
     assert process_comment(comment) == expected
+
+
+def test_multiline_parameter_descriptions_with_mixed_indentation():
+    comment = """/**
+     * @brief Handles several inputs.
+     *
+     * @param alpha Alpha starts on the command line and continues
+     *              with an indented line
+     * and also continues without indentation.
+     * @param[in] beta Beta starts with a direction.
+     * More beta detail follows without indentation.
+     * @arg gamma Gamma uses arg as a parameter alias.
+     *             Gamma also has an indented continuation.
+     * @tparam T Template text starts here.
+     * More template text follows without indentation.
+     */"""
+
+    expected = """\
+Handles several inputs.
+
+Args:
+    alpha: Alpha starts on the command line and continues with an
+           indented line and also continues without indentation.
+    beta [in]: Beta starts with a direction. More beta detail follows
+               without indentation.
+    gamma: Gamma uses arg as a parameter alias. Gamma also has an
+           indented continuation.
+
+Template Args:
+    T: Template text starts here. More template text follows without
+       indentation."""
+
+    assert process_comment(comment) == expected
+
+
+def test_multiline_return_raise_and_section_descriptions_with_mixed_indentation():
+    comment = """/**
+     * @brief Performs work.
+     *
+     * @return The result starts here
+     *         and continues with indentation
+     * and then continues without indentation.
+     * @retval false Work was skipped
+     * because the input was empty.
+     * @throws RuntimeError Raised when work fails
+     *                      after partial progress
+     * and the failure detail is unindented.
+     * @warning The warning starts here
+     *          and continues with indentation
+     * and also without indentation.
+     * @note Notes can span
+     * multiple lines without indentation too.
+     * @par Custom Section
+     * Custom section text can continue
+     * without indentation.
+     */"""
+
+    expected = """\
+Performs work.
+
+Returns:
+    The result starts here and continues with indentation and then
+    continues without indentation.
+    false: Work was skipped because the input was empty.
+
+Raises:
+    RuntimeError: Raised when work fails after partial progress and
+                  the failure detail is unindented.
+
+Warning:
+    The warning starts here and continues with indentation and also
+    without indentation.
+
+Note:
+    Notes can span multiple lines without indentation too.
+
+Custom Section:
+    Custom section text can continue without indentation."""
+
+    assert process_comment(comment) == expected
