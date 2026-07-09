@@ -115,10 +115,16 @@ t_param_re = re.compile(r"[\\@]tparam\s+([\w:]+)\s*(.*)")
 return_re = re.compile(r"[\\@]returns?\s+(.*)")
 raises_re = re.compile(r"[\\@](?:exception|throws?)\s+([\w:]+)(.*)")
 any_dox_re = re.compile(r"[\\@].*")
+code_segment_re = re.compile(r"(```)")
+prefix_re = re.compile(r"(\s*)((?:[*\-•]\s)|(?:\(?\d+[\.)]\s)|(?:\w+:)\s*)")
 
 
 def process_comment(comment):
-    result = ""
+    # For declarations that have no raw comment; skip the full normalization pipeline.
+    if not comment:
+        return ""
+
+    result_lines = []
 
     # Remove C++ comment syntax
     leading_spaces = float("inf")
@@ -134,13 +140,12 @@ def process_comment(comment):
             s = s[1:]
         if len(s) > 0:
             leading_spaces = min(leading_spaces, len(s) - len(s.lstrip()))
-        result += s + "\n"
+        result_lines.append(s)
 
     if leading_spaces != float("inf"):
-        result2 = ""
-        for s in result.splitlines():
-            result2 += s[leading_spaces:] + "\n"
-        result = result2
+        result = "\n".join(s[leading_spaces:] for s in result_lines) + "\n"
+    else:
+        result = "\n".join(result_lines) + "\n"
 
     # Doxygen tags
     cpp_group = r"([^\s]+)"
@@ -266,17 +271,17 @@ def process_comment(comment):
     wrapper.width = docstring_width
     wrapper.initial_indent = wrapper.subsequent_indent = ""
 
-    result = ""
+    result = []
     in_code_segment = False
-    for x in re.split(r"(```)", s):
+    for x in code_segment_re.split(s):
         if x == "```":
             if not in_code_segment:
-                result += "```\n"
+                result.append("```\n")
             else:
-                result += "\n```\n\n"
+                result.append("\n```\n\n")
             in_code_segment = not in_code_segment
         elif in_code_segment:
-            result += x.strip()
+            result.append(x.strip())
         else:
             wrapped = []
             paragraph = []
@@ -284,15 +289,10 @@ def process_comment(comment):
             def get_prefix_and_indent(line) -> tuple[str | None, str]:
                 indent = len(line) - len(line.lstrip())
                 indent_str = " " * indent
-                m = re.match(
-                    rf"{indent_str}("
-                    r"(?:[*\-•]\s)|(?:\(?\d+[\.)]\s)|(?:\w+:)"
-                    r"\s*)",
-                    line,
-                )
+                m = prefix_re.match(line)
                 if m:
-                    g = m.group(0)
-                    return g, " " * len(g)
+                    prefix = m.group(0)
+                    return prefix, " " * len(prefix)
                 return None, indent_str
 
             def flush_paragraph(paragraph=paragraph, wrapped=wrapped):
@@ -341,12 +341,23 @@ def process_comment(comment):
                 current_indent = indent
 
             flush_paragraph()
-            result += "\n".join(wrapped)
-    return result.rstrip().lstrip("\n")
+            result.append("\n".join(wrapped))
+    return "".join(result).rstrip().lstrip("\n")
 
 
-def extract(filename, node, prefix, output):
-    if not (node.location.file is None or os.path.samefile(d(node.location.file.name), filename)):
+def _is_cursor_from_file(node, filename, file_cache):
+    if node.location.file is None:
+        return True
+
+    node_filename = d(node.location.file.name)
+    # libclang often reports many cursors from the same file; avoid repeated stat calls by caching.
+    if node_filename not in file_cache:
+        file_cache[node_filename] = os.path.samefile(node_filename, filename)
+    return file_cache[node_filename]
+
+
+def extract(filename, node, prefix, output, file_cache):
+    if not _is_cursor_from_file(node, filename, file_cache):
         return 0
     if node.kind in RECURSE_LIST:
         sub_prefix = prefix
@@ -355,7 +366,7 @@ def extract(filename, node, prefix, output):
                 sub_prefix += "_"
             sub_prefix += d(node.spelling)
         for i in node.get_children():
-            extract(filename, i, sub_prefix, output)
+            extract(filename, i, sub_prefix, output, file_cache)
     if node.kind in PRINT_LIST:
         comment = d(node.raw_comment) if node.raw_comment is not None else ""
         comment = process_comment(comment)
@@ -383,7 +394,7 @@ class ExtractionThread(Thread):
         try:
             index = cindex.Index(cindex.conf.lib.clang_createIndex(False, True))
             tu = index.parse(self.filename, self.parameters)
-            extract(self.filename, tu.cursor, "", self.output)
+            extract(self.filename, tu.cursor, "", self.output, {})
         except BaseException:
             errors_detected = True
             raise
