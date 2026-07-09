@@ -113,15 +113,15 @@ pybind11_mkdoc(
 ```
 ## Limitations
 
-This tool supports Linux and macOS for Python versions 3.8 to 3.11.  Also, it
+This tool supports Linux and macOS for Python versions 3.9 to 3.14.  Also, it
 requires Clang/LLVM to be installed.
 
 
 ## Testing
 
-Install the packages `pytest`, `pytest-xdist`, and `flit`:
+Install the packages `pytest`, `pytest-forked` and `pybind11`:
 ```
-python3 -m pip install pytest==7.1.3 pytest-xdist==2.4.0
+python3 -m pip install pytest pytest-forked pybind11
 ```
 
 Next, install this project:
