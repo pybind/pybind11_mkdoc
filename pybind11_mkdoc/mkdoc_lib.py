@@ -110,13 +110,244 @@ def sanitize_name(name):
     return "mkd_doc_" + name
 
 
-param_re = re.compile(r"[\\@]param\s+([\w:]+)\s*(.*)")
-t_param_re = re.compile(r"[\\@]tparam\s+([\w:]+)\s*(.*)")
-return_re = re.compile(r"[\\@]returns?\s+(.*)")
-raises_re = re.compile(r"[\\@](?:exception|throws?)\s+([\w:]+)(.*)")
-any_dox_re = re.compile(r"[\\@].*")
+section_command_re = re.compile(r"\s*[\\@](\w+)(?:\[([^\]]+)\])?(?:\s+(.*))?$")
 code_segment_re = re.compile(r"(```)")
-prefix_re = re.compile(r"(\s*)((?:[*\-•]\s)|(?:\(?\d+[\.)]\s)|(?:\w+:)\s*)")
+prefix_re = re.compile(r"(\s*)((?:[*\-•]\s)|(?:\(?\d+[\.)]\s)|(?:[\w:]+(?:\s+\[[^\]]+\])?:)\s*)")
+param_arg_re = re.compile(r"([\w:]+)\s*(.*)")
+raises_arg_re = re.compile(r"([\w:]+)\s*(.*)")
+
+IGNORED_DOXYGEN_COMMANDS = {
+    "addtogroup",
+    "class",
+    "def",
+    "defgroup",
+    "dir",
+    "enum",
+    "file",
+    "fn",
+    "ingroup",
+    "interface",
+    "mainpage",
+    "name",
+    "namespace",
+    "overload",
+    "package",
+    "page",
+    "private",
+    "protected",
+    "public",
+    "relates",
+    "relatesalso",
+    "struct",
+    "typedef",
+    "union",
+    "var",
+    "weakgroup",
+}
+
+SECTION_HEADINGS = {
+    "attention": "Attention",
+    "author": "Author",
+    "authors": "Authors",
+    "bug": "Bug",
+    "copyright": "Copyright",
+    "date": "Date",
+    "deprecated": "Deprecated",
+    "invariant": "Invariant",
+    "note": "Note",
+    "par": None,
+    "post": "Postcondition",
+    "pre": "Precondition",
+    "remark": "Remark",
+    "remarks": "Remarks",
+    "result": "Returns",
+    "retval": "Returns",
+    "return": "Returns",
+    "returns": "Returns",
+    "sa": "See also",
+    "see": "See also",
+    "since": "Since",
+    "todo": "Todo",
+    "version": "Version",
+    "warning": "Warning",
+}
+
+INLINE_DOXYGEN_REPLACEMENTS = [
+    (re.compile(r"[\\@][cp]\s+([^\s]+)"), r"``\1``"),
+    (re.compile(r"[\\@](?:a|e|em)\s+([^\s]+)"), r"*\1*"),
+    (re.compile(r"[\\@]b\s+([^\s]+)"), r"**\1**"),
+    (re.compile(r"[\\@]ref\s+([^\s]+)"), r"\1"),
+]
+
+
+def _format_named_entries(heading, entries):
+    if not entries:
+        return []
+    lines = [f"{heading}:"]
+    lines += [f"    {name}: {text}" for name, text in entries]
+    lines.append("")
+    return lines
+
+
+def _format_list_entries(heading, entries):
+    if not entries:
+        return []
+    lines = [f"{heading}:"]
+    lines += [f"    {text}" for text in entries]
+    lines.append("")
+    return lines
+
+
+def _format_section_entries(entries):
+    lines = []
+    for heading, text in entries:
+        lines.append(f"{heading}:")
+        if text:
+            lines.append(f"    {text}")
+        lines.append("")
+    return lines
+
+
+def _append_continuation(target, text):
+    text = text.strip()
+    if not text:
+        return
+    if target[0] == "body":
+        target[1].append(text)
+    elif target[0] == "section":
+        target[1][-1][1].append(text)
+    elif target[0] == "list":
+        entries = target[1]
+        index = target[2]
+        entries[index] = f"{entries[index]} {text}".strip()
+    else:
+        entries = target[1]
+        index = target[2]
+        name, value = entries[index]
+        entries[index] = (name, f"{value} {text}".strip())
+
+
+def _consume_doxygen_sections(s):
+    lines = s.splitlines()
+    body_lines = []
+    params = []
+    t_params = []
+    returns = []
+    raises = []
+    sections = []
+    active = None
+
+    for line in lines:
+        stripped = line.strip()
+        if not stripped:
+            body_lines.append(line)
+            active = None
+            continue
+
+        m = section_command_re.match(line)
+        if not m:
+            if active is not None:
+                _append_continuation(active, line)
+            else:
+                body_lines.append(line)
+            continue
+
+        command, option, rest = m.groups()
+        command = command.lower()
+        rest = (rest or "").strip()
+
+        if command in {"brief", "details", "short"}:
+            if rest:
+                body_lines.append(rest)
+                active = ("body", body_lines)
+            else:
+                active = None
+            continue
+
+        if command in {"param", "arg"}:
+            arg = param_arg_re.match(rest)
+            if arg:
+                name, text = arg.groups()
+                if option:
+                    name = f"{name} [{option}]"
+                params.append((name, text.strip()))
+                active = ("entry", params, len(params) - 1)
+            else:
+                active = None
+            continue
+
+        if command in {"tparam", "typeparam"}:
+            arg = param_arg_re.match(rest)
+            if arg:
+                name, text = arg.groups()
+                t_params.append((name, text.strip()))
+                active = ("entry", t_params, len(t_params) - 1)
+            else:
+                active = None
+            continue
+
+        if command in {"return", "returns", "result"}:
+            if rest:
+                returns.append(rest)
+                active = ("list", returns, len(returns) - 1)
+            else:
+                active = None
+            continue
+
+        if command == "retval":
+            arg = param_arg_re.match(rest)
+            if arg:
+                name, text = arg.groups()
+                returns.append(f"{name}: {text.strip()}" if text else name)
+                active = ("list", returns, len(returns) - 1)
+            else:
+                active = None
+            continue
+
+        if command in {"exception", "throw", "throws"}:
+            arg = raises_arg_re.match(rest)
+            if arg:
+                name, text = arg.groups()
+                raises.append((name, text.strip()))
+                active = ("entry", raises, len(raises) - 1)
+            else:
+                active = None
+            continue
+
+        if command in IGNORED_DOXYGEN_COMMANDS:
+            active = None
+            continue
+
+        if command in SECTION_HEADINGS:
+            heading = SECTION_HEADINGS[command]
+            if heading is None:
+                arg = param_arg_re.match(rest)
+                if arg:
+                    heading, rest = arg.groups()
+                    heading = heading.strip().rstrip(":")
+                    rest = rest.strip()
+                else:
+                    heading = "Note"
+            sections.append([heading, [rest] if rest else []])
+            active = ("section", sections)
+            continue
+
+        if active is not None:
+            _append_continuation(active, line)
+        else:
+            body_lines.append(line)
+
+    result = list(body_lines)
+    while result and not result[-1].strip():
+        result.pop()
+    if result and (params or t_params or returns or raises or sections):
+        result.append("")
+    result += _format_named_entries("Args", params)
+    result += _format_named_entries("Template Args", t_params)
+    result += _format_list_entries("Returns", returns)
+    result += _format_named_entries("Raises", raises)
+    result += _format_section_entries((heading, " ".join(text).strip()) for heading, text in sections)
+    return "\n".join(result)
 
 
 def process_comment(comment):
@@ -147,108 +378,13 @@ def process_comment(comment):
     else:
         result = "\n".join(result_lines) + "\n"
 
-    # Doxygen tags
-    cpp_group = r"([^\s]+)"
-
     s = result
-    s = re.sub(rf"[\\@][cp]\s+{cpp_group}", r"``\1``", s)
-    s = re.sub(rf"[\\@]a\s+{cpp_group}", r"*\1*", s)
-    s = re.sub(rf"[\\@]e\s+{cpp_group}", r"*\1*", s)
-    s = re.sub(rf"[\\@]em\s+{cpp_group}", r"*\1*", s)
-    s = re.sub(rf"[\\@]b\s+{cpp_group}", r"**\1**", s)
-    s = re.sub(rf"[\\@]ingroup\s+{cpp_group}", r"", s)
-
-    # Add arguments, return type, and exceptions
-    lines = s.splitlines()
-    rm_lines = []
-    params = {}
-    t_params = {}
-    raises = {}
-    ret = []
-    add_to = None
-    for k, line in enumerate(lines):
-        if m := param_re.match(line):
-            name, text = m.groups()
-            params[name] = text.strip()
-            rm_lines.append(k)
-            add_to = (params, name)
-        elif m := t_param_re.match(line):
-            name, text = m.groups()
-            t_params[name] = text.strip()
-            rm_lines.append(k)
-            add_to = (t_params, name)
-        elif m := return_re.match(line):
-            (text,) = m.groups()
-            ret.append(text.strip())
-            add_to = (ret, len(ret) - 1)
-            rm_lines.append(k)
-        elif m := raises_re.match(line):
-            name, text = m.groups()
-            raises[name] = text.strip()
-            add_to = (raises, name)
-            rm_lines.append(k)
-        elif m := any_dox_re.match(line):
-            add_to = None
-        elif add_to is not None:
-            add_to[0][add_to[1]] += " " + line.strip()
-            rm_lines.append(k)
-
-    # If we had any hits, then remove the old lines, fill with the new lines, and convert back to s
-    if rm_lines:
-        rm_lines.sort(reverse=True)
-        for k in rm_lines:
-            lines.pop(k)
-
-        new_lines = []
-        if params:
-            new_lines.append("Args:")
-            new_lines += [f"    {name}: {text}" for name, text in params.items()]
-            new_lines.append("")
-        if t_params:
-            new_lines.append("Template Args:")
-            new_lines += [f"    {name}: {text}" for name, text in t_params.items()]
-            new_lines.append("")
-        if ret:
-            new_lines.append("Returns:")
-            new_lines += [f"    {text}" for text in ret]
-            new_lines.append("")
-        if raises:
-            new_lines.append("Raises:")
-            new_lines += [f"    {name}: {text}" for name, text in raises.items()]
-            new_lines.append("")
-
-        idx = rm_lines[-1]
-        lines = [*lines[0:idx], *new_lines, *lines[idx:]]
-        s = "\n".join(lines)
-
-    # Remove class and struct tags
-    s = re.sub(r"[\\@](class|struct)\s+.*", "", s)
-
-    for in_, out_ in {
-        "authors": "Authors",
-        "author": "Author",
-        "copyright": "Copyright",
-        "date": "Date",
-        "remark": "Remark",
-        "sa": "See also",
-        "see": "See also",
-        "extends": "Extends",
-    }.items():
-        s = re.sub(rf"[\\@]{in_}\s*", rf"\n\n${out_}:\n\n", s)
-
-    s = re.sub(r"[\\@]details\s*", r"\n\n", s)
-    s = re.sub(r"[\\@]brief\s*", r"", s)
-    s = re.sub(r"[\\@]short\s*", r"", s)
-    s = re.sub(r"[\\@]ref\s*", r"", s)
+    for pattern, replacement in INLINE_DOXYGEN_REPLACEMENTS:
+        s = pattern.sub(replacement, s)
 
     s = re.sub(r"[\\@]code\s?(.*?)\s?[\\@]endcode", r"```\n\1\n```\n", s, flags=re.DOTALL)
-    s = re.sub(r"[\\@]warning\s?(.*?)\s?\n\n", r"\n\n$.. warning::\n\n\1\n\n", s, flags=re.DOTALL)
-    s = re.sub(r"[\\@]note\s?(.*?)\s?\n\n", r"\n\n$.. note::\n\n\1\n\n", s, flags=re.DOTALL)
-    # Deprecated expects a version number for reST and not for Doxygen. Here the first word of the
-    # doxygen directives is assumed to correspond to the version number
-    s = re.sub(r"[\\@]deprecated\s(.*?)\s?(.*?)\s?\n\n", r"$.. deprecated:: \1\n\n\2\n\n", s, flags=re.DOTALL)
-    s = re.sub(r"[\\@]since\s?(.*?)\s?\n\n", r".. versionadded:: \1\n\n", s, flags=re.DOTALL)
-    s = re.sub(r"[\\@]todo\s?(.*?)\s?\n\n", r"$.. todo::\n\n\1\n\n", s, flags=re.DOTALL)
+    s = re.sub(r"[\\@]verbatim\s?(.*?)\s?[\\@]endverbatim", r"```\n\1\n```\n", s, flags=re.DOTALL)
+    s = _consume_doxygen_sections(s)
 
     # HTML/TeX tags
     s = re.sub(r"<tt>(.*?)</tt>", r"``\1``", s, flags=re.DOTALL)
@@ -276,6 +412,8 @@ def process_comment(comment):
     for x in code_segment_re.split(s):
         if x == "```":
             if not in_code_segment:
+                if result and result[-1] and not result[-1].endswith("\n\n"):
+                    result[-1] += "\n"
                 result.append("```\n")
             else:
                 result.append("\n```\n\n")
