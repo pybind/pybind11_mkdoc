@@ -45,6 +45,14 @@ PRINT_LIST = [
     CursorKind.FIELD_DECL,
 ]
 
+FUNCTION_DOCSTRING_LIST = [
+    CursorKind.FUNCTION_DECL,
+    CursorKind.FUNCTION_TEMPLATE,
+    CursorKind.CONVERSION_FUNCTION,
+    CursorKind.CXX_METHOD,
+    CursorKind.CONSTRUCTOR,
+]
+
 PREFIX_BLACKLIST = [CursorKind.TRANSLATION_UNIT]
 
 CPP_OPERATORS = {
@@ -110,15 +118,265 @@ def sanitize_name(name):
     return "mkd_doc_" + name
 
 
-param_re = re.compile(r"[\\@]param\s+([\w:]+)\s*(.*)")
-t_param_re = re.compile(r"[\\@]tparam\s+([\w:]+)\s*(.*)")
-return_re = re.compile(r"[\\@]returns?\s+(.*)")
-raises_re = re.compile(r"[\\@](?:exception|throws?)\s+([\w:]+)(.*)")
-any_dox_re = re.compile(r"[\\@].*")
+section_command_re = re.compile(r"\s*[\\@](\w+)(?:\[([^\]]+)\])?(?:\s+(.*))?$")
+code_segment_re = re.compile(r"(```)")
+prefix_re = re.compile(r"(\s*)((?:[*\-•]\s)|(?:\(?\d+[\.)]\s)|(?:[\w:]+(?:\s+\[[^\]]+\])?:)\s*)")
+param_arg_re = re.compile(r"([\w:]+)\s*(.*)")
+raises_arg_re = re.compile(r"([\w:]+)\s*(.*)")
+
+IGNORED_DOXYGEN_COMMANDS = {
+    "addtogroup",
+    "class",
+    "def",
+    "defgroup",
+    "dir",
+    "enum",
+    "file",
+    "fn",
+    "ingroup",
+    "interface",
+    "mainpage",
+    "name",
+    "namespace",
+    "overload",
+    "package",
+    "page",
+    "private",
+    "protected",
+    "public",
+    "relates",
+    "relatesalso",
+    "struct",
+    "typedef",
+    "union",
+    "var",
+    "weakgroup",
+}
+
+SECTION_HEADINGS = {
+    "attention": "Attention",
+    "author": "Author",
+    "authors": "Authors",
+    "bug": "Bug",
+    "copyright": "Copyright",
+    "date": "Date",
+    "deprecated": "Deprecated",
+    "invariant": "Invariant",
+    "note": "Note",
+    "par": None,
+    "post": "Postcondition",
+    "pre": "Precondition",
+    "remark": "Remark",
+    "remarks": "Remarks",
+    "result": "Returns",
+    "retval": "Returns",
+    "return": "Returns",
+    "returns": "Returns",
+    "sa": "See also",
+    "see": "See also",
+    "since": "Since",
+    "todo": "Todo",
+    "version": "Version",
+    "warning": "Warning",
+}
+
+INLINE_DOXYGEN_REPLACEMENTS = [
+    (re.compile(r"[\\@][cp]\s+([^\s]+)"), r"``\1``"),
+    (re.compile(r"[\\@](?:a|e|em)\s+([^\s]+)"), r"*\1*"),
+    (re.compile(r"[\\@]b\s+([^\s]+)"), r"**\1**"),
+    (re.compile(r"[\\@]ref\s+([^\s]+)"), r"\1"),
+]
+
+
+def _format_named_entries(heading, entries):
+    if not entries:
+        return []
+    lines = [f"{heading}:"]
+    lines += [f"    {name}: {text}" for name, text in entries]
+    lines.append("")
+    return lines
+
+
+def _format_list_entries(heading, entries):
+    if not entries:
+        return []
+    lines = [f"{heading}:"]
+    lines += [f"    {text}" for text in entries]
+    lines.append("")
+    return lines
+
+
+def _format_section_entries(entries):
+    lines = []
+    for heading, text in entries:
+        lines.append(f"{heading}:")
+        if text:
+            lines.append(f"    {text}")
+        lines.append("")
+    return lines
+
+
+def _append_continuation(target, text):
+    text = text.strip()
+    if not text:
+        return
+    if target[0] == "body":
+        target[1].append(text)
+    elif target[0] == "section":
+        target[1][-1][1].append(text)
+    elif target[0] == "list":
+        entries = target[1]
+        index = target[2]
+        entries[index] = f"{entries[index]} {text}".strip()
+    else:
+        entries = target[1]
+        index = target[2]
+        name, value = entries[index]
+        entries[index] = (name, f"{value} {text}".strip())
+
+
+def _consume_doxygen_sections(s):
+    lines = s.splitlines()
+    body_lines = []
+    params = []
+    t_params = []
+    returns = []
+    raises = []
+    sections = []
+    active = None
+    pending_brief_separator = False
+
+    for line in lines:
+        stripped = line.strip()
+        if not stripped:
+            body_lines.append(line)
+            active = None
+            pending_brief_separator = False
+            continue
+
+        m = section_command_re.match(line)
+        if not m:
+            if active is not None:
+                _append_continuation(active, line)
+            else:
+                if pending_brief_separator:
+                    body_lines.append("")
+                    pending_brief_separator = False
+                body_lines.append(line)
+            continue
+
+        command, option, rest = m.groups()
+        command = command.lower()
+        rest = (rest or "").strip()
+
+        if pending_brief_separator and command in {"details", "short"}:
+            body_lines.append("")
+            pending_brief_separator = False
+
+        if command in {"brief", "short"}:
+            if rest:
+                body_lines.append(rest)
+                pending_brief_separator = True
+                active = None
+            else:
+                active = None
+            continue
+
+        if command == "details":
+            if rest:
+                body_lines.append(rest)
+                active = ("body", body_lines)
+            else:
+                active = None
+            continue
+
+        if command in {"param", "arg"}:
+            arg = param_arg_re.match(rest)
+            if arg:
+                name, text = arg.groups()
+                if option:
+                    name = f"{name} [{option}]"
+                params.append((name, text.strip()))
+                active = ("entry", params, len(params) - 1)
+            else:
+                active = None
+            continue
+
+        if command in {"tparam", "typeparam"}:
+            arg = param_arg_re.match(rest)
+            if arg:
+                name, text = arg.groups()
+                t_params.append((name, text.strip()))
+                active = ("entry", t_params, len(t_params) - 1)
+            else:
+                active = None
+            continue
+
+        if command in {"return", "returns", "result"}:
+            if rest:
+                returns.append(rest)
+                active = ("list", returns, len(returns) - 1)
+            else:
+                active = None
+            continue
+
+        if command == "retval":
+            arg = param_arg_re.match(rest)
+            if arg:
+                name, text = arg.groups()
+                returns.append(f"{name}: {text.strip()}" if text else name)
+                active = ("list", returns, len(returns) - 1)
+            else:
+                active = None
+            continue
+
+        if command in {"exception", "throw", "throws"}:
+            arg = raises_arg_re.match(rest)
+            if arg:
+                name, text = arg.groups()
+                raises.append((name, text.strip()))
+                active = ("entry", raises, len(raises) - 1)
+            else:
+                active = None
+            continue
+
+        if command in IGNORED_DOXYGEN_COMMANDS:
+            active = None
+            continue
+
+        if command in SECTION_HEADINGS:
+            heading = SECTION_HEADINGS[command]
+            if heading is None:
+                heading = rest.strip().rstrip(":") or "Note"
+                rest = ""
+            sections.append([heading, [rest] if rest else []])
+            active = ("section", sections)
+            continue
+
+        if active is not None:
+            _append_continuation(active, line)
+        else:
+            body_lines.append(line)
+
+    result = list(body_lines)
+    while result and not result[-1].strip():
+        result.pop()
+    if result and (params or t_params or returns or raises or sections):
+        result.append("")
+    result += _format_named_entries("Args", params)
+    result += _format_named_entries("Template Args", t_params)
+    result += _format_list_entries("Returns", returns)
+    result += _format_named_entries("Raises", raises)
+    result += _format_section_entries((heading, " ".join(text).strip()) for heading, text in sections)
+    return "\n".join(result)
 
 
 def process_comment(comment):
-    result = ""
+    # For declarations that have no raw comment; skip the full normalization pipeline.
+    if not comment:
+        return ""
+
+    result_lines = []
 
     # Remove C++ comment syntax
     leading_spaces = float("inf")
@@ -134,116 +392,20 @@ def process_comment(comment):
             s = s[1:]
         if len(s) > 0:
             leading_spaces = min(leading_spaces, len(s) - len(s.lstrip()))
-        result += s + "\n"
+        result_lines.append(s)
 
     if leading_spaces != float("inf"):
-        result2 = ""
-        for s in result.splitlines():
-            result2 += s[leading_spaces:] + "\n"
-        result = result2
-
-    # Doxygen tags
-    cpp_group = r"([^\s]+)"
+        result = "\n".join(s[leading_spaces:] for s in result_lines) + "\n"
+    else:
+        result = "\n".join(result_lines) + "\n"
 
     s = result
-    s = re.sub(rf"[\\@][cp]\s+{cpp_group}", r"``\1``", s)
-    s = re.sub(rf"[\\@]a\s+{cpp_group}", r"*\1*", s)
-    s = re.sub(rf"[\\@]e\s+{cpp_group}", r"*\1*", s)
-    s = re.sub(rf"[\\@]em\s+{cpp_group}", r"*\1*", s)
-    s = re.sub(rf"[\\@]b\s+{cpp_group}", r"**\1**", s)
-    s = re.sub(rf"[\\@]ingroup\s+{cpp_group}", r"", s)
-
-    # Add arguments, return type, and exceptions
-    lines = s.splitlines()
-    rm_lines = []
-    params = {}
-    t_params = {}
-    raises = {}
-    ret = []
-    add_to = None
-    for k, line in enumerate(lines):
-        if m := param_re.match(line):
-            name, text = m.groups()
-            params[name] = text.strip()
-            rm_lines.append(k)
-            add_to = (params, name)
-        elif m := t_param_re.match(line):
-            name, text = m.groups()
-            t_params[name] = text.strip()
-            rm_lines.append(k)
-            add_to = (t_params, name)
-        elif m := return_re.match(line):
-            (text,) = m.groups()
-            ret.append(text.strip())
-            add_to = (ret, len(ret) - 1)
-            rm_lines.append(k)
-        elif m := raises_re.match(line):
-            name, text = m.groups()
-            raises[name] = text.strip()
-            add_to = (raises, name)
-            rm_lines.append(k)
-        elif m := any_dox_re.match(line):
-            add_to = None
-        elif add_to is not None:
-            add_to[0][add_to[1]] += " " + line.strip()
-            rm_lines.append(k)
-
-    # If we had any hits, then remove the old lines, fill with the new lines, and convert back to s
-    if rm_lines:
-        rm_lines.sort(reverse=True)
-        for k in rm_lines:
-            lines.pop(k)
-
-        new_lines = []
-        if params:
-            new_lines.append("Args:")
-            new_lines += [f"    {name}: {text}" for name, text in params.items()]
-            new_lines.append("")
-        if t_params:
-            new_lines.append("Template Args:")
-            new_lines += [f"    {name}: {text}" for name, text in t_params.items()]
-            new_lines.append("")
-        if ret:
-            new_lines.append("Returns:")
-            new_lines += [f"    {text}" for text in ret]
-            new_lines.append("")
-        if raises:
-            new_lines.append("Raises:")
-            new_lines += [f"    {name}: {text}" for name, text in raises.items()]
-            new_lines.append("")
-
-        idx = rm_lines[-1]
-        lines = [*lines[0:idx], *new_lines, *lines[idx:]]
-        s = "\n".join(lines)
-
-    # Remove class and struct tags
-    s = re.sub(r"[\\@](class|struct)\s+.*", "", s)
-
-    for in_, out_ in {
-        "authors": "Authors",
-        "author": "Author",
-        "copyright": "Copyright",
-        "date": "Date",
-        "remark": "Remark",
-        "sa": "See also",
-        "see": "See also",
-        "extends": "Extends",
-    }.items():
-        s = re.sub(rf"[\\@]{in_}\s*", rf"\n\n${out_}:\n\n", s)
-
-    s = re.sub(r"[\\@]details\s*", r"\n\n", s)
-    s = re.sub(r"[\\@]brief\s*", r"", s)
-    s = re.sub(r"[\\@]short\s*", r"", s)
-    s = re.sub(r"[\\@]ref\s*", r"", s)
+    for pattern, replacement in INLINE_DOXYGEN_REPLACEMENTS:
+        s = pattern.sub(replacement, s)
 
     s = re.sub(r"[\\@]code\s?(.*?)\s?[\\@]endcode", r"```\n\1\n```\n", s, flags=re.DOTALL)
-    s = re.sub(r"[\\@]warning\s?(.*?)\s?\n\n", r"\n\n$.. warning::\n\n\1\n\n", s, flags=re.DOTALL)
-    s = re.sub(r"[\\@]note\s?(.*?)\s?\n\n", r"\n\n$.. note::\n\n\1\n\n", s, flags=re.DOTALL)
-    # Deprecated expects a version number for reST and not for Doxygen. Here the first word of the
-    # doxygen directives is assumed to correspond to the version number
-    s = re.sub(r"[\\@]deprecated\s(.*?)\s?(.*?)\s?\n\n", r"$.. deprecated:: \1\n\n\2\n\n", s, flags=re.DOTALL)
-    s = re.sub(r"[\\@]since\s?(.*?)\s?\n\n", r".. versionadded:: \1\n\n", s, flags=re.DOTALL)
-    s = re.sub(r"[\\@]todo\s?(.*?)\s?\n\n", r"$.. todo::\n\n\1\n\n", s, flags=re.DOTALL)
+    s = re.sub(r"[\\@]verbatim\s?(.*?)\s?[\\@]endverbatim", r"```\n\1\n```\n", s, flags=re.DOTALL)
+    s = _consume_doxygen_sections(s)
 
     # HTML/TeX tags
     s = re.sub(r"<tt>(.*?)</tt>", r"``\1``", s, flags=re.DOTALL)
@@ -266,17 +428,19 @@ def process_comment(comment):
     wrapper.width = docstring_width
     wrapper.initial_indent = wrapper.subsequent_indent = ""
 
-    result = ""
+    result = []
     in_code_segment = False
-    for x in re.split(r"(```)", s):
+    for x in code_segment_re.split(s):
         if x == "```":
             if not in_code_segment:
-                result += "```\n"
+                if result and result[-1] and not result[-1].endswith("\n\n"):
+                    result[-1] += "\n"
+                result.append("```\n")
             else:
-                result += "\n```\n\n"
+                result.append("\n```\n\n")
             in_code_segment = not in_code_segment
         elif in_code_segment:
-            result += x.strip()
+            result.append(x.strip())
         else:
             wrapped = []
             paragraph = []
@@ -284,15 +448,10 @@ def process_comment(comment):
             def get_prefix_and_indent(line) -> tuple[str | None, str]:
                 indent = len(line) - len(line.lstrip())
                 indent_str = " " * indent
-                m = re.match(
-                    rf"{indent_str}("
-                    r"(?:[*\-•]\s)|(?:\(?\d+[\.)]\s)|(?:\w+:)"
-                    r"\s*)",
-                    line,
-                )
+                m = prefix_re.match(line)
                 if m:
-                    g = m.group(0)
-                    return g, " " * len(g)
+                    prefix = m.group(0)
+                    return prefix, " " * len(prefix)
                 return None, indent_str
 
             def flush_paragraph(paragraph=paragraph, wrapped=wrapped):
@@ -341,12 +500,32 @@ def process_comment(comment):
                 current_indent = indent
 
             flush_paragraph()
-            result += "\n".join(wrapped)
-    return result.rstrip().lstrip("\n")
+            result.append("\n".join(wrapped))
+    return "".join(result).rstrip().lstrip("\n")
 
 
-def extract(filename, node, prefix, output):
-    if not (node.location.file is None or os.path.samefile(d(node.location.file.name), filename)):
+def format_function_docstring(comment):
+    if not comment:
+        return ""
+    comment = comment.rstrip()
+    if "\n" not in comment:
+        return comment
+    return comment + "\n\n"
+
+
+def _is_cursor_from_file(node, filename, file_cache):
+    if node.location.file is None:
+        return True
+
+    node_filename = d(node.location.file.name)
+    # libclang often reports many cursors from the same file; avoid repeated stat calls by caching.
+    if node_filename not in file_cache:
+        file_cache[node_filename] = os.path.samefile(node_filename, filename)
+    return file_cache[node_filename]
+
+
+def extract(filename, node, prefix, output, file_cache):
+    if not _is_cursor_from_file(node, filename, file_cache):
         return 0
     if node.kind in RECURSE_LIST:
         sub_prefix = prefix
@@ -355,10 +534,12 @@ def extract(filename, node, prefix, output):
                 sub_prefix += "_"
             sub_prefix += d(node.spelling)
         for i in node.get_children():
-            extract(filename, i, sub_prefix, output)
+            extract(filename, i, sub_prefix, output, file_cache)
     if node.kind in PRINT_LIST:
         comment = d(node.raw_comment) if node.raw_comment is not None else ""
         comment = process_comment(comment)
+        if node.kind in FUNCTION_DOCSTRING_LIST:
+            comment = format_function_docstring(comment)
         sub_prefix = prefix
         if len(sub_prefix) > 0:
             sub_prefix += "_"
@@ -383,7 +564,7 @@ class ExtractionThread(Thread):
         try:
             index = cindex.Index(cindex.conf.lib.clang_createIndex(False, True))
             tu = index.parse(self.filename, self.parameters)
-            extract(self.filename, tu.cursor, "", self.output)
+            extract(self.filename, tu.cursor, "", self.output, {})
         except BaseException:
             errors_detected = True
             raise
