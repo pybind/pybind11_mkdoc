@@ -109,6 +109,50 @@ def test_single_line_function_docstrings_do_not_get_extra_blank_lines():
     assert format_function_docstring(comment) == "Summary line."
 
 
+def test_google_sections_are_separated_when_brief_touches_param():
+    comment = process_comment("""/**
+     * @brief Summary line.
+     * @param value Value description.
+     * @return Result description.
+     */""")
+
+    expected = """\
+Summary line.
+
+Args:
+    value: Value description.
+
+Returns:
+    Result description."""
+
+    assert comment == expected
+
+
+def test_brief_continuation_stays_in_summary_before_google_sections():
+    comment = process_comment("""/**
+     * @brief Create a chained f2f between this frame and the target frame. This frame will be
+     * the o-frame and the target frame will become the p-frame.
+     * @param frame The target frame. This will be the p-frame in the chained frame to frame.
+     * @return The ChainedFrameToFrame connecting this frame (o-frame)
+     *         and the target frame (p-frame).
+     */""")
+
+    expected = """\
+Create a chained f2f between this frame and the target frame. This
+frame will be the o-frame and the target frame will become the
+p-frame.
+
+Args:
+    frame: The target frame. This will be the p-frame in the chained
+           frame to frame.
+
+Returns:
+    The ChainedFrameToFrame connecting this frame (o-frame) and the
+    target frame (p-frame)."""
+
+    assert comment == expected
+
+
 def test_multiline_parameter_descriptions_with_mixed_indentation():
     comment = """/**
      * @brief Handles several inputs.

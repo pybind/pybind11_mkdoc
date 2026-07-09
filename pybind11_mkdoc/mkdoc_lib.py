@@ -222,6 +222,10 @@ def _append_continuation(target, text):
         return
     if target[0] == "body":
         target[1].append(text)
+    elif target[0] == "brief":
+        if target[1] and target[1][-1].rstrip().endswith((".", "!", "?")):
+            target[1].append("")
+        target[1].append(text)
     elif target[0] == "section":
         target[1][-1][1].append(text)
     elif target[0] == "list":
@@ -277,7 +281,7 @@ def _consume_doxygen_sections(s):
             if rest:
                 body_lines.append(rest)
                 pending_brief_separator = True
-                active = None
+                active = ("brief", body_lines)
             else:
                 active = None
             continue
