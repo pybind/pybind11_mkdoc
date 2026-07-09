@@ -1,4 +1,4 @@
-from pybind11_mkdoc.mkdoc_lib import process_comment
+from pybind11_mkdoc.mkdoc_lib import format_function_docstring, process_comment
 
 
 def test_doxygen_sections_and_continuations():
@@ -24,7 +24,9 @@ def test_doxygen_sections_and_continuations():
      */"""
 
     expected = """\
-Parses a value. Continues the brief text.
+Parses a value.
+
+Continues the brief text.
 
 Args:
     input [in]: Input text. Continuation keeps belonging to input.
@@ -88,6 +90,23 @@ value += 2;
 ```"""
 
     assert process_comment(comment) == expected
+
+
+def test_function_docstrings_end_with_blank_line_before_closing_quotes():
+    comment = process_comment("""/**
+     * @brief Summary line.
+     * Details begin after the summary.
+     */""")
+
+    assert format_function_docstring(comment) == "Summary line.\n\nDetails begin after the summary.\n\n"
+
+
+def test_single_line_function_docstrings_do_not_get_extra_blank_lines():
+    comment = process_comment("""/**
+     * @brief Summary line.
+     */""")
+
+    assert format_function_docstring(comment) == "Summary line."
 
 
 def test_multiline_parameter_descriptions_with_mixed_indentation():

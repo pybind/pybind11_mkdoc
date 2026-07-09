@@ -45,6 +45,14 @@ PRINT_LIST = [
     CursorKind.FIELD_DECL,
 ]
 
+FUNCTION_DOCSTRING_LIST = [
+    CursorKind.FUNCTION_DECL,
+    CursorKind.FUNCTION_TEMPLATE,
+    CursorKind.CONVERSION_FUNCTION,
+    CursorKind.CXX_METHOD,
+    CursorKind.CONSTRUCTOR,
+]
+
 PREFIX_BLACKLIST = [CursorKind.TRANSLATION_UNIT]
 
 CPP_OPERATORS = {
@@ -236,12 +244,14 @@ def _consume_doxygen_sections(s):
     raises = []
     sections = []
     active = None
+    pending_brief_separator = False
 
     for line in lines:
         stripped = line.strip()
         if not stripped:
             body_lines.append(line)
             active = None
+            pending_brief_separator = False
             continue
 
         m = section_command_re.match(line)
@@ -249,6 +259,9 @@ def _consume_doxygen_sections(s):
             if active is not None:
                 _append_continuation(active, line)
             else:
+                if pending_brief_separator:
+                    body_lines.append("")
+                    pending_brief_separator = False
                 body_lines.append(line)
             continue
 
@@ -256,7 +269,20 @@ def _consume_doxygen_sections(s):
         command = command.lower()
         rest = (rest or "").strip()
 
-        if command in {"brief", "details", "short"}:
+        if pending_brief_separator and command in {"details", "short"}:
+            body_lines.append("")
+            pending_brief_separator = False
+
+        if command in {"brief", "short"}:
+            if rest:
+                body_lines.append(rest)
+                pending_brief_separator = True
+                active = None
+            else:
+                active = None
+            continue
+
+        if command == "details":
             if rest:
                 body_lines.append(rest)
                 active = ("body", body_lines)
@@ -478,6 +504,15 @@ def process_comment(comment):
     return "".join(result).rstrip().lstrip("\n")
 
 
+def format_function_docstring(comment):
+    if not comment:
+        return ""
+    comment = comment.rstrip()
+    if "\n" not in comment:
+        return comment
+    return comment + "\n\n"
+
+
 def _is_cursor_from_file(node, filename, file_cache):
     if node.location.file is None:
         return True
@@ -503,6 +538,8 @@ def extract(filename, node, prefix, output, file_cache):
     if node.kind in PRINT_LIST:
         comment = d(node.raw_comment) if node.raw_comment is not None else ""
         comment = process_comment(comment)
+        if node.kind in FUNCTION_DOCSTRING_LIST:
+            comment = format_function_docstring(comment)
         sub_prefix = prefix
         if len(sub_prefix) > 0:
             sub_prefix += "_"

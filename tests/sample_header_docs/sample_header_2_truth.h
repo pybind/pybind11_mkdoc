@@ -38,7 +38,9 @@ Returns:
     An integer is what I return.
 
 Raises:
-    runtime_error: Throws runtime error if p1 is empty.)doc";
+    runtime_error: Throws runtime error if p1 is empty.
+
+)doc";
 
 static const char *mkd_doc_Base_method2 =
 R"doc(Description for method1.
@@ -56,7 +58,9 @@ Returns:
 
 Raises:
     runtime_error: Throws runtime error if p1 is 0.
-    invalid_argument: Throws invalid_argument error if p2 is 0.)doc";
+    invalid_argument: Throws invalid_argument error if p2 is 0.
+
+)doc";
 
 #if defined(__GNUG__)
 #pragma GCC diagnostic pop
