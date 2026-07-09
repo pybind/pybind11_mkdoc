@@ -120,7 +120,7 @@ def sanitize_name(name):
 
 section_command_re = re.compile(r"\s*[\\@](\w+)(?:\[([^\]]+)\])?(?:\s+(.*))?$")
 code_segment_re = re.compile(r"(```)")
-prefix_re = re.compile(r"(\s*)((?:[*\-•]\s)|(?:\(?\d+[\.)]\s)|(?:[\w:]+(?:\s+\[[^\]]+\])?:)\s*)")
+prefix_re = re.compile(r"(\s*)((?:[*\-•]\s)|(?:\(?\d+[\.)]\s)|(?:[\w:]+(?:\s+\[[^\]]+\])?:(?:\s+|$)))")
 param_arg_re = re.compile(r"([\w:]+)\s*(.*)")
 raises_arg_re = re.compile(r"([\w:]+)\s*(.*)")
 
