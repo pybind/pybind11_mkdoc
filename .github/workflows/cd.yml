@@ -19,7 +19,6 @@ jobs:
     steps:
     - uses: actions/checkout@v7
       with:
-        fetch-depth: 0
         persist-credentials: false
     - uses: hynek/build-and-inspect-python-package@v2.18.0
 
@@ -46,5 +45,3 @@ jobs:
         subject-path: "dist/*"
 
     - uses: pypa/gh-action-pypi-publish@v1.14.1
-      with:
-        attestations: true
