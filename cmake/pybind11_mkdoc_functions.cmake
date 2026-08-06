@@ -11,7 +11,7 @@
 #             current source directory.
 #
 # The optional parameters are:
-# * EXTRA_ARGS - This string argument will be added verbatim to the pybind11-mkdoc command.
+# * EXTRA_ARGS - A list of arguments that will be added verbatim to the pybind11-mkdoc command.
 #
 # Example usage:
 # pybind11_add_module(my_pybind11_module src/my_pybind11_module.cc)
@@ -24,8 +24,8 @@
 # )
 function (pybind11_mkdoc)
     set(options)
-    set(oneValueArgs OUTPUT PYBIND11_MODULE EXTRA_ARGS)
-    set(multiValueArgs HEADERS)
+    set(oneValueArgs OUTPUT PYBIND11_MODULE)
+    set(multiValueArgs HEADERS EXTRA_ARGS)
     cmake_parse_arguments(PARSE_ARGV 0 arg
         "${options}" "${oneValueArgs}" "${multiValueArgs}"
     )
