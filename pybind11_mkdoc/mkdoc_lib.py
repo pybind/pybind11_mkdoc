@@ -14,7 +14,6 @@ import platform
 import re
 import sys
 import textwrap
-from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
 from glob import glob
 from itertools import repeat
@@ -92,7 +91,8 @@ CPP_OPERATORS = {
     "()": "call",
 }
 
-CPP_OPERATORS = OrderedDict(sorted(CPP_OPERATORS.items(), key=lambda t: -len(t[0])))
+# Longest operators first, so that e.g. "<<=" is matched before "<<".
+CPP_OPERATORS = dict(sorted(CPP_OPERATORS.items(), key=lambda t: -len(t[0])))
 
 docstring_width = 70
 
@@ -101,25 +101,20 @@ class NoFilenamesError(ValueError):
     pass
 
 
-def d(s):
-    return s if isinstance(s, str) else s.decode("utf8")
-
-
 def sanitize_name(name):
     name = re.sub(r"type-parameter-0-([0-9]+)", r"T\1", name)
     for k, v in CPP_OPERATORS.items():
         name = name.replace(f"operator{k}", f"operator_{v}")
     name = re.sub("<.*>", "", name)
     name = "".join([ch if ch.isalnum() else "_" for ch in name])
-    name = re.sub("_$", "", re.sub("_+", "_", name))
+    name = re.sub("_+", "_", name).removesuffix("_")
     return "mkd_doc_" + name
 
 
 section_command_re = re.compile(r"\s*[\\@](\w+)(?:\[([^\]]+)\])?(?:\s+(.*))?$")
 code_segment_re = re.compile(r"(```)")
 prefix_re = re.compile(r"(\s*)((?:[*\-•]\s)|(?:\(?\d+[\.)]\s)|(?:[\w:]+(?:\s+\[[^\]]+\])?:(?:\s+|$)))")
-param_arg_re = re.compile(r"([\w:]+)\s*(.*)")
-raises_arg_re = re.compile(r"([\w:]+)\s*(.*)")
+named_arg_re = re.compile(r"([\w:]+)\s*(.*)")
 
 IGNORED_DOXYGEN_COMMANDS = {
     "addtogroup",
@@ -182,6 +177,23 @@ INLINE_DOXYGEN_REPLACEMENTS = [
     (re.compile(r"[\\@](?:a|e|em)\s+([^\s]+)"), r"*\1*"),
     (re.compile(r"[\\@]b\s+([^\s]+)"), r"**\1**"),
     (re.compile(r"[\\@]ref\s+([^\s]+)"), r"\1"),
+]
+
+# Applied before the Doxygen sections are consumed.
+BLOCK_DOXYGEN_REPLACEMENTS = [
+    (re.compile(r"[\\@]code\s?(.*?)\s?[\\@]endcode", flags=re.DOTALL), "```\n\\1\n```\n"),
+    (re.compile(r"[\\@]verbatim\s?(.*?)\s?[\\@]endverbatim", flags=re.DOTALL), "```\n\\1\n```\n"),
+]
+
+MARKUP_REPLACEMENTS = [
+    (re.compile(r"<tt>(.*?)</tt>", flags=re.DOTALL), r"``\1``"),
+    (re.compile(r"<pre>(.*?)</pre>", flags=re.DOTALL), "```\n\\1\n```\n"),
+    (re.compile(r"<em>(.*?)</em>", flags=re.DOTALL), r"*\1*"),
+    (re.compile(r"<b>(.*?)</b>", flags=re.DOTALL), r"**\1**"),
+    (re.compile(r"[\\@]f\$(.*?)[\\@]f\$", flags=re.DOTALL), r":math:`\1`"),
+    (re.compile(r"<li>"), "\n\n* "),
+    (re.compile(r"</?ul>"), ""),
+    (re.compile(r"</li>"), "\n\n"),
 ]
 
 
@@ -292,7 +304,7 @@ def _consume_doxygen_sections(s):
             continue
 
         if command in {"param", "arg"}:
-            arg = param_arg_re.match(rest)
+            arg = named_arg_re.match(rest)
             if arg:
                 name, text = arg.groups()
                 if option:
@@ -304,7 +316,7 @@ def _consume_doxygen_sections(s):
             continue
 
         if command in {"tparam", "typeparam"}:
-            arg = param_arg_re.match(rest)
+            arg = named_arg_re.match(rest)
             if arg:
                 name, text = arg.groups()
                 t_params.append((name, text.strip()))
@@ -322,7 +334,7 @@ def _consume_doxygen_sections(s):
             continue
 
         if command == "retval":
-            arg = param_arg_re.match(rest)
+            arg = named_arg_re.match(rest)
             if arg:
                 name, text = arg.groups()
                 returns.append(f"{name}: {text.strip()}" if text else name)
@@ -332,7 +344,7 @@ def _consume_doxygen_sections(s):
             continue
 
         if command in {"exception", "throw", "throws"}:
-            arg = raises_arg_re.match(rest)
+            arg = named_arg_re.match(rest)
             if arg:
                 name, text = arg.groups()
                 raises.append((name, text.strip()))
@@ -404,19 +416,14 @@ def process_comment(comment):
     for pattern, replacement in INLINE_DOXYGEN_REPLACEMENTS:
         s = pattern.sub(replacement, s)
 
-    s = re.sub(r"[\\@]code\s?(.*?)\s?[\\@]endcode", r"```\n\1\n```\n", s, flags=re.DOTALL)
-    s = re.sub(r"[\\@]verbatim\s?(.*?)\s?[\\@]endverbatim", r"```\n\1\n```\n", s, flags=re.DOTALL)
+    for pattern, replacement in BLOCK_DOXYGEN_REPLACEMENTS:
+        s = pattern.sub(replacement, s)
+
     s = _consume_doxygen_sections(s)
 
     # HTML/TeX tags
-    s = re.sub(r"<tt>(.*?)</tt>", r"``\1``", s, flags=re.DOTALL)
-    s = re.sub(r"<pre>(.*?)</pre>", r"```\n\1\n```\n", s, flags=re.DOTALL)
-    s = re.sub(r"<em>(.*?)</em>", r"*\1*", s, flags=re.DOTALL)
-    s = re.sub(r"<b>(.*?)</b>", r"**\1**", s, flags=re.DOTALL)
-    s = re.sub(r"[\\@]f\$(.*?)[\\@]f\$", r":math:`\1`", s, flags=re.DOTALL)
-    s = re.sub(r"<li>", r"\n\n* ", s)
-    s = re.sub(r"</?ul>", r"", s)
-    s = re.sub(r"</li>", r"\n\n", s)
+    for pattern, replacement in MARKUP_REPLACEMENTS:
+        s = pattern.sub(replacement, s)
 
     s = s.replace("``true``", "``True``")
     s = s.replace("``false``", "``False``")
@@ -518,7 +525,7 @@ def _is_cursor_from_file(node, filename, file_cache):
     if node.location.file is None:
         return True
 
-    node_filename = d(node.location.file.name)
+    node_filename = node.location.file.name
     # libclang often reports many cursors from the same file; avoid repeated stat calls by caching.
     if node_filename not in file_cache:
         file_cache[node_filename] = os.path.samefile(node_filename, filename)
@@ -527,29 +534,25 @@ def _is_cursor_from_file(node, filename, file_cache):
 
 def extract(filename, node, prefix, output, file_cache):
     if not _is_cursor_from_file(node, filename, file_cache):
-        return 0
+        return
     if node.kind in RECURSE_LIST:
         sub_prefix = prefix
         if node.kind not in PREFIX_BLACKLIST:
             if len(sub_prefix) > 0:
                 sub_prefix += "_"
-            sub_prefix += d(node.spelling)
+            sub_prefix += node.spelling
         for i in node.get_children():
             extract(filename, i, sub_prefix, output, file_cache)
     if node.kind in PRINT_LIST:
-        comment = d(node.raw_comment) if node.raw_comment is not None else ""
-        comment = process_comment(comment)
+        comment = process_comment(node.raw_comment or "")
         if node.kind in FUNCTION_DOCSTRING_LIST:
             comment = format_function_docstring(comment)
         sub_prefix = prefix
         if len(sub_prefix) > 0:
             sub_prefix += "_"
         if len(node.spelling) > 0:
-            name = sanitize_name(sub_prefix + d(node.spelling))
+            name = sanitize_name(sub_prefix + node.spelling)
             output.append((name, filename, comment))
-            return None
-        return None
-    return None
 
 
 def _extract_file(filename, parameters):
@@ -726,10 +729,8 @@ def write_header(comments, out_file=sys.stdout):
         else:
             name_prev = name
             name_ctr = 1
-        print(
-            '\nstatic const char *{} ={}R"doc({})doc";'.format(name, "\n" if "\n" in comment else " ", comment),
-            file=out_file,
-        )
+        sep = "\n" if "\n" in comment else " "
+        print(f'\nstatic const char *{name} ={sep}R"doc({comment})doc";', file=out_file)
 
     print(
         """
