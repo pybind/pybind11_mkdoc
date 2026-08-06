@@ -4,6 +4,8 @@ from pathlib import Path
 
 import pytest
 
+from pybind11_mkdoc import _append_definition
+
 DIR = Path(__file__).resolve().parent
 
 with open(DIR / "sample_header_docs" / "sample_header_truth.h") as f:
@@ -25,6 +27,22 @@ def test_simple_header_cli(tmp_path: Path, name: str) -> None:
     res = tf.read_text(encoding="utf-8")
 
     assert res == expected
+
+
+@pytest.mark.parametrize(
+    ("definition", "expected_arg"),
+    [
+        ("FOO", "-DFOO=1"),
+        ("FOO=", "-DFOO="),
+        ("FOO=2", "-DFOO=2"),
+        (" FOO = 2 ", "-DFOO=2"),
+    ],
+)
+def test_append_definition(definition: str, expected_arg: str) -> None:
+    args: list[str] = []
+    _append_definition(args, definition)
+
+    assert args == [expected_arg]
 
 
 def test_parse_failure_sets_exit_code(tmp_path: Path) -> None:

@@ -6,7 +6,7 @@ This is a package for building pybind11 docstrings from C++ header comments.
 
 import argparse
 import os
-import re
+import sys
 from pathlib import Path
 
 from pybind11_mkdoc.mkdoc_lib import mkdoc
@@ -34,7 +34,7 @@ def _append_include_dir(args: list, include_dir: str, *, verbose: bool = True):
     if os.path.isdir(include_dir):
         args.append(f"-I{include_dir}")
     elif verbose:
-        pass
+        print(f"Include directory '{include_dir}' does not exist!", file=sys.stderr)  # noqa: T201
 
 
 def _append_definition(args: list, definition: str):
@@ -42,7 +42,8 @@ def _append_definition(args: list, definition: str):
     Add a compiler definition to an argument list.
 
     The definition is expected to be given in the format '<macro>=<value>',
-    which will define <macro> to <value> (or 1 if <value> is omitted).
+    which will define <macro> to <value> (or 1 if the '=<value>' part is
+    omitted). An explicit empty value ('<macro>=') defines <macro> to nothing.
 
     Parameters
     ----------
@@ -52,26 +53,12 @@ def _append_definition(args: list, definition: str):
 
     definition: str
         The definition to append.
-
-    verbose: bool
-        Whether to print a warning for invalid definition strings.
     """
 
-    try:
-        macro, _, value = definition.partition("=")
-        macro = macro.strip()
-        value = value.strip() if value else "1"
+    macro, sep, value = definition.partition("=")
+    value = value.strip() if sep else "1"
 
-        args.append(f"-D{macro}={value}")
-    except ValueError:
-        # most likely means there was no '=' given
-        # check if argument is valid identifier
-        if re.search(r"^[A-Za-z_][A-Za-z0-9_]*", definition):
-            args.append(f"-D{definition}")
-        else:
-            pass
-    except Exception:
-        pass
+    args.append(f"-D{macro.strip()}={value}")
 
 
 def get_cmake_dir() -> Path:
@@ -142,7 +129,7 @@ def main():
 
     parser.add_argument("header", type=str, nargs="+", help="A header file to process.")
 
-    [parsed_args, unparsed_args] = parser.parse_known_args()
+    parsed_args, unparsed_args = parser.parse_known_args()
 
     mkdoc_args = []
     mkdoc_out = parsed_args.output
@@ -165,7 +152,7 @@ def main():
             # append argument as is and hope for the best
             mkdoc_args.append(arg)
 
-    mkdoc_args.extend(header for header in parsed_args.header)
+    mkdoc_args.extend(parsed_args.header)
 
     mkdoc(mkdoc_args, docstring_width, mkdoc_out)
 

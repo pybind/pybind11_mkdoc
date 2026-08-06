@@ -744,7 +744,7 @@ def write_header(comments, out_file=sys.stdout):
 def mkdoc(args, width, output=None):
     if width is not None:
         global docstring_width
-        docstring_width = int(width)
+        docstring_width = width
     comments = extract_all(args)
 
     if output:
