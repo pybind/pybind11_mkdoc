@@ -23,6 +23,13 @@ def test_generate_headers(capsys, tmp_path):
     assert output.read_text() == expected
 
 
+def test_extract_all_twice_in_one_process():
+    header = str(DIR / "sample_header_docs" / "sample_header.h")
+    first = pybind11_mkdoc.mkdoc_lib.extract_all([header])
+    second = pybind11_mkdoc.mkdoc_lib.extract_all([header])
+    assert first == second
+
+
 def test_generate_headers_2(capsys, tmp_path):
     with open(DIR / "sample_header_docs" / "sample_header_2_truth.h") as f:
         expected = f.read()

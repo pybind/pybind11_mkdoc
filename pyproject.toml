@@ -31,7 +31,6 @@ dynamic = ["version"]
 test = [
     "pytest",
     "pybind11",
-    "pytest-forked",
 ]
 dev = [{ include-group = "test" }]
 

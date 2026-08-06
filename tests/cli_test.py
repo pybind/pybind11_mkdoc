@@ -25,3 +25,15 @@ def test_simple_header_cli(tmp_path: Path, name: str) -> None:
     res = tf.read_text(encoding="utf-8")
 
     assert res == expected
+
+
+def test_parse_failure_sets_exit_code(tmp_path: Path) -> None:
+    tf = tmp_path / "tmp.h"
+    result = subprocess.run(
+        [sys.executable, "-m", "pybind11_mkdoc", "-o", tf, tmp_path / "does_not_exist.h"],
+        check=False,
+        capture_output=True,
+    )
+
+    assert result.returncode != 0
+    assert not tf.exists()

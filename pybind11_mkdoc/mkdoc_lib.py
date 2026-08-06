@@ -15,9 +15,9 @@ import re
 import sys
 import textwrap
 from collections import OrderedDict
+from concurrent.futures import ThreadPoolExecutor
 from glob import glob
-from multiprocessing import cpu_count
-from threading import Semaphore, Thread
+from itertools import repeat
 
 from clang import cindex
 from clang.cindex import CursorKind
@@ -94,9 +94,6 @@ CPP_OPERATORS = {
 
 CPP_OPERATORS = OrderedDict(sorted(CPP_OPERATORS.items(), key=lambda t: -len(t[0])))
 
-job_count = cpu_count()
-job_semaphore = Semaphore(job_count)
-errors_detected = False
 docstring_width = 70
 
 
@@ -555,25 +552,12 @@ def extract(filename, node, prefix, output, file_cache):
     return None
 
 
-class ExtractionThread(Thread):
-    def __init__(self, filename, parameters, output):
-        Thread.__init__(self)
-        self.filename = filename
-        self.parameters = parameters
-        self.output = output
-        job_semaphore.acquire()
-
-    def run(self):
-        global errors_detected
-        try:
-            index = cindex.Index(cindex.conf.lib.clang_createIndex(False, True))
-            tu = index.parse(self.filename, self.parameters)
-            extract(self.filename, tu.cursor, "", self.output, {})
-        except BaseException:
-            errors_detected = True
-            raise
-        finally:
-            job_semaphore.release()
+def _extract_file(filename, parameters):
+    index = cindex.Index(cindex.conf.lib.clang_createIndex(False, True))
+    tu = index.parse(filename, parameters)
+    output = []
+    extract(filename, tu.cursor, "", output, {})
+    return output
 
 
 def read_args(args):
@@ -696,15 +680,9 @@ def read_args(args):
 
 def extract_all(args):
     parameters, filenames = read_args(args)
-    output = []
-    for filename in filenames:
-        thr = ExtractionThread(filename, parameters, output)
-        thr.start()
-
-    for _i in range(job_count):
-        job_semaphore.acquire()
-
-    return output
+    with ThreadPoolExecutor(max_workers=os.cpu_count()) as executor:
+        results = executor.map(_extract_file, filenames, repeat(parameters))
+        return [comment for output in results for comment in output]
 
 
 def write_header(comments, out_file=sys.stdout):
@@ -765,8 +743,6 @@ def mkdoc(args, width, output=None):
         global docstring_width
         docstring_width = int(width)
     comments = extract_all(args)
-    if errors_detected:
-        return
 
     if output:
         try:
