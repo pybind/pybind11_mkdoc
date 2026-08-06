@@ -575,7 +575,8 @@ def read_args(args):
         sdk_dir = dev_path + "Platforms/MacOSX.platform/Developer/SDKs"
         libclang = lib_dir + "libclang.dylib"
 
-        if os.path.exists(libclang):
+        # cindex forbids (re)configuring the library once it has been loaded
+        if os.path.exists(libclang) and not cindex.Config.loaded:
             cindex.Config.set_library_path(os.path.dirname(libclang))
 
         if os.path.exists(sdk_dir):
@@ -586,13 +587,14 @@ def read_args(args):
         if "LIBCLANG_PATH" in os.environ:
             library_file = os.environ["LIBCLANG_PATH"]
             if os.path.isfile(library_file):
-                cindex.Config.set_library_file(library_file)
+                if not cindex.Config.loaded:
+                    cindex.Config.set_library_file(library_file)
             else:
                 msg = "Failed to find libclang.dll! Set the LIBCLANG_PATH environment variable to provide a path to it."
                 raise FileNotFoundError(msg)
         else:
             library_file = ctypes.util.find_library("libclang.dll")
-            if library_file is not None:
+            if library_file is not None and not cindex.Config.loaded:
                 cindex.Config.set_library_file(library_file)
     elif platform.system() == "Linux":
         # LLVM switched to a monolithical setup that includes everything under
@@ -634,7 +636,8 @@ def read_args(args):
         else:
             libclang_dir = os.path.join(llvm_dir, "lib", "libclang.so.1")
 
-        cindex.Config.set_library_file(libclang_dir)
+        if not cindex.Config.loaded:
+            cindex.Config.set_library_file(libclang_dir)
         cpp_dirs = []
 
         if "-stdlib=libc++" not in args:
