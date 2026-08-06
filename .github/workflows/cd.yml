@@ -1,0 +1,47 @@
+name: CD
+
+on:
+  workflow_dispatch:
+  release:
+    types:
+    - published
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions: {}
+
+jobs:
+  dist:
+    runs-on: ubuntu-latest
+    name: Build distribution
+    steps:
+    - uses: actions/checkout@v7
+      with:
+        persist-credentials: false
+    - uses: hynek/build-and-inspect-python-package@v3.0.1
+
+  publish:
+    needs: [dist]
+    runs-on: ubuntu-latest
+    name: Publish to PyPI
+    if: github.event_name == 'release' && github.event.action == 'published'
+    environment:
+      name: pypi
+      url: https://pypi.org/p/pybind11_mkdoc
+    permissions:
+      id-token: write  # Needed for PyPI trusted publishing and attestations
+      attestations: write  # Needed for artifact attestation
+    steps:
+    - uses: actions/download-artifact@v8
+      with:
+        name: Packages
+        path: dist
+
+    - name: Generate artifact attestation for sdist and wheel
+      uses: actions/attest-build-provenance@v4.1.1
+      with:
+        subject-path: "dist/*"
+
+    - uses: pypa/gh-action-pypi-publish@v1.14.2

@@ -75,4 +75,4 @@ jobs:
     name: Build distribution
     steps:
     - uses: actions/checkout@v7
-    - uses: hynek/build-and-inspect-python-package@v2.18.0
+    - uses: hynek/build-and-inspect-python-package@v3.0.1
