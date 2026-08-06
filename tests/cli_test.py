@@ -37,3 +37,18 @@ def test_parse_failure_sets_exit_code(tmp_path: Path) -> None:
 
     assert result.returncode != 0
     assert not tf.exists()
+
+
+def test_missing_include_reports_diagnostics(tmp_path: Path) -> None:
+    header = tmp_path / "bad_header.h"
+    header.write_text('#include "does_not_exist.h"\n', encoding="utf-8")
+    tf = tmp_path / "tmp.h"
+    result = subprocess.run(
+        [sys.executable, "-m", "pybind11_mkdoc", "-o", tf, header],
+        check=False,
+        capture_output=True,
+    )
+
+    assert result.returncode != 0
+    assert not tf.exists()
+    assert "does_not_exist.h" in result.stderr.decode()

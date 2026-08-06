@@ -552,9 +552,23 @@ def extract(filename, node, prefix, output, file_cache):
     return None
 
 
+def _report_diagnostics(filename, tu):
+    """Print clang diagnostics to stderr and fail if any of them is an error."""
+    errors = 0
+    for diagnostic in tu.diagnostics:
+        sys.stderr.write(diagnostic.format() + "\n")
+        if diagnostic.severity >= cindex.Diagnostic.Error:
+            errors += 1
+    if errors:
+        msg = f"Clang reported {errors} error(s) while parsing {filename}"
+        raise RuntimeError(msg)
+
+
 def _extract_file(filename, parameters):
-    index = cindex.Index(cindex.conf.lib.clang_createIndex(False, True))
+    # Diagnostics are printed by _report_diagnostics, not by libclang itself.
+    index = cindex.Index(cindex.conf.lib.clang_createIndex(False, False))
     tu = index.parse(filename, parameters)
+    _report_diagnostics(filename, tu)
     output = []
     extract(filename, tu.cursor, "", output, {})
     return output
