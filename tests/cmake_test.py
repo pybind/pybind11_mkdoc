@@ -27,7 +27,8 @@ def test_pybind11_mkdoc_cmake_extra_args(tmp_path: Path) -> None:
     # Run pybind11-mkdoc and put the output in a temp file
     build_dir = tmp_path / "build"
     env = os.environ.copy()
-    env["PYBIND11_TEST_EXTRA_ARGS"] = "-DMY_EXTRA_DEFINE=1"
+    # A CMake list, so it reaches the function as two separate arguments
+    env["PYBIND11_TEST_EXTRA_ARGS"] = "-DMY_EXTRA_DEFINE=1;-DMY_OTHER_DEFINE=1"
 
     subprocess.run(
         ["cmake", "-B", build_dir, "-S", DIR / "cmake_docs", f"-DPython_EXECUTABLE={sys.executable}"],

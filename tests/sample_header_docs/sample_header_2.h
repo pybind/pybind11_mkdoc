@@ -45,4 +45,11 @@ class Base {
      */
     void method3();
 #endif
+
+#ifdef MY_OTHER_DEFINE
+    /**
+     * @brief A method that is only included if MY_OTHER_DEFINE is defined.
+     */
+    void method4();
+#endif
 };

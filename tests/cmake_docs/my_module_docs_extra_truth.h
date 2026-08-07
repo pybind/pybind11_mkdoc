@@ -64,6 +64,8 @@ Raises:
 
 static const char *mkd_doc_Base_method3 = R"doc(A method that is only included if MY_EXTRA_DEFINE is defined.)doc";
 
+static const char *mkd_doc_Base_method4 = R"doc(A method that is only included if MY_OTHER_DEFINE is defined.)doc";
+
 static const char *mkd_doc_RootLevelSymbol =
 R"doc(Root-level symbol. Magna fermentum iaculis eu non diam phasellus
 vestibulum.)doc";
