@@ -598,10 +598,10 @@ def read_args(args):
         if "LIBCLANG_PATH" in os.environ:
             library_file = os.environ["LIBCLANG_PATH"]
             if not os.path.isfile(library_file):
-                msg = (
-                    "Failed to find libclang.dylib! Set the LIBCLANG_PATH environment variable to provide a path to it."
+                raise FileNotFoundError(
+                    f"LIBCLANG_PATH points to {library_file!r}, which is not a file. "
+                    "Set it to the path of libclang.dylib."
                 )
-                raise FileNotFoundError(msg)
             if not cindex.Config.loaded:
                 cindex.Config.set_library_file(library_file)
         else:
@@ -631,12 +631,13 @@ def read_args(args):
     elif platform.system() == "Windows":
         if "LIBCLANG_PATH" in os.environ:
             library_file = os.environ["LIBCLANG_PATH"]
-            if os.path.isfile(library_file):
-                if not cindex.Config.loaded:
-                    cindex.Config.set_library_file(library_file)
-            else:
-                msg = "Failed to find libclang.dll! Set the LIBCLANG_PATH environment variable to provide a path to it."
-                raise FileNotFoundError(msg)
+            if not os.path.isfile(library_file):
+                raise FileNotFoundError(
+                    f"LIBCLANG_PATH points to {library_file!r}, which is not a file. "
+                    "Set it to the path of libclang.dll."
+                )
+            if not cindex.Config.loaded:
+                cindex.Config.set_library_file(library_file)
         else:
             library_file = ctypes.util.find_library("libclang.dll")
             if library_file is not None and not cindex.Config.loaded:
@@ -662,6 +663,11 @@ def read_args(args):
 
         if "LIBCLANG_PATH" in os.environ:
             libclang_file = os.environ["LIBCLANG_PATH"]
+            if not os.path.isfile(libclang_file):
+                raise FileNotFoundError(
+                    f"LIBCLANG_PATH points to {libclang_file!r}, which is not a file. "
+                    "Set it to the path of libclang.so.1."
+                )
         elif llvm_dir is not None:
             libclang_file = os.path.join(llvm_dir, "lib", "libclang.so.1")
         else:

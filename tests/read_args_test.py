@@ -40,30 +40,43 @@ def fake_walk(subdirs):
 
 
 @pytest.mark.usefixtures("linux", "clean_env")
-def test_linux_libclang_path_without_llvm_dir(monkeypatch, config_calls):
+def test_linux_libclang_path_without_llvm_dir(monkeypatch, config_calls, tmp_path):
+    lib = tmp_path / "libclang.so.1"
+    lib.touch()
     monkeypatch.setattr(mkdoc_lib, "glob", lambda _pattern: [])
-    monkeypatch.setenv("LIBCLANG_PATH", "/opt/lib/libclang.so.1")
+    monkeypatch.setenv("LIBCLANG_PATH", str(lib))
 
     _, filenames = mkdoc_lib.read_args(["foo.h"])
 
-    assert config_calls["file"] == "/opt/lib/libclang.so.1"
+    assert config_calls["file"] == str(lib)
     assert filenames == ["foo.h"]
 
 
 @pytest.mark.usefixtures("linux", "clean_env")
-def test_linux_libclang_path_without_llvm_dir_libcpp(monkeypatch, config_calls):
+def test_linux_libclang_path_without_llvm_dir_libcpp(monkeypatch, config_calls, tmp_path):
+    lib = tmp_path / "libclang.so.1"
+    lib.touch()
     monkeypatch.setattr(mkdoc_lib, "glob", lambda _pattern: [])
-    monkeypatch.setenv("LIBCLANG_PATH", "/opt/lib/libclang.so.1")
+    monkeypatch.setenv("LIBCLANG_PATH", str(lib))
 
     parameters, _ = mkdoc_lib.read_args(["-stdlib=libc++", "foo.h"])
 
-    assert config_calls["file"] == "/opt/lib/libclang.so.1"
+    assert config_calls["file"] == str(lib)
     assert "-stdlib=libc++" in parameters
 
 
 @pytest.mark.usefixtures("linux", "clean_env", "config_calls")
 def test_linux_no_llvm_dir_no_env_raises(monkeypatch):
     monkeypatch.setattr(mkdoc_lib, "glob", lambda _pattern: [])
+
+    with pytest.raises(FileNotFoundError):
+        mkdoc_lib.read_args(["foo.h"])
+
+
+@pytest.mark.usefixtures("linux", "clean_env", "config_calls")
+def test_linux_libclang_path_missing_raises(monkeypatch, tmp_path):
+    monkeypatch.setattr(mkdoc_lib, "glob", lambda _pattern: [])
+    monkeypatch.setenv("LIBCLANG_PATH", str(tmp_path / "does_not_exist.so.1"))
 
     with pytest.raises(FileNotFoundError):
         mkdoc_lib.read_args(["foo.h"])
