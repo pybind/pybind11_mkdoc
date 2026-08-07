@@ -717,12 +717,17 @@ def write_header(comments, out_file=sys.stdout):
         file=out_file,
     )
 
+    # A suffixed name must not collide with a real symbol of that name, or with an earlier suffixed name.
+    taken = {name for name, _, _ in comments}
     name_ctr = 1
     name_prev = None
     for name, _, comment in sorted(comments, key=lambda x: (x[0], x[1])):
         if name == name_prev:
             name_ctr += 1
-            name = name + f"_{name_ctr}"
+            while f"{name_prev}_{name_ctr}" in taken:
+                name_ctr += 1
+            name = f"{name_prev}_{name_ctr}"
+            taken.add(name)
         else:
             name_prev = name
             name_ctr = 1
