@@ -17,6 +17,7 @@ import textwrap
 from concurrent.futures import ThreadPoolExecutor
 from glob import glob
 from itertools import repeat
+from pathlib import PurePosixPath
 
 from clang import cindex
 from clang.cindex import CursorKind
@@ -627,7 +628,7 @@ def read_args(args):
                     sdk = sdks[-1]
                 else:
                     continue
-                parameters.extend(["-isysroot", os.path.join(sdk_dir, sdk)])
+                parameters.extend(["-isysroot", str(PurePosixPath(sdk_dir) / sdk)])
                 break
     elif platform.system() == "Windows":
         if "LIBCLANG_PATH" in os.environ:
@@ -653,7 +654,7 @@ def read_args(args):
                 path
                 for libdir in ["lib64", "lib", "lib32"]
                 for path in glob(f"/usr/{libdir}/llvm-*")
-                if os.path.exists(os.path.join(path, "lib", "libclang.so.1"))
+                if os.path.exists(str(PurePosixPath(path) / "lib" / "libclang.so.1"))
             ),
             default=None,
             key=_folder_version,
@@ -672,7 +673,7 @@ def read_args(args):
                 )
                 raise FileNotFoundError(msg)
         elif llvm_dir is not None:
-            libclang_file = os.path.join(llvm_dir, "lib", "libclang.so.1")
+            libclang_file = str(PurePosixPath(llvm_dir) / "lib" / "libclang.so.1")
         else:
             msg = (
                 "Failed to find a LLVM installation providing the file "
@@ -698,13 +699,17 @@ def read_args(args):
                 max(glob(f"/usr/include/{platform.machine()}-linux-gnu/c++/*"), default=None, key=_folder_version)
             )
         elif llvm_dir is not None:
-            cpp_dirs.append(os.path.join(llvm_dir, "include", "c++", "v1"))
+            cpp_dirs.append(str(PurePosixPath(llvm_dir) / "include" / "c++" / "v1"))
 
         if "CLANG_INCLUDE_DIR" in os.environ:
             cpp_dirs.append(os.environ["CLANG_INCLUDE_DIR"])
         elif llvm_dir is not None:
             cpp_dirs.append(
-                max(glob(os.path.join(llvm_dir, "lib", "clang", "*", "include")), default=None, key=_folder_version)
+                max(
+                    glob(str(PurePosixPath(llvm_dir) / "lib" / "clang" / "*" / "include")),
+                    default=None,
+                    key=_folder_version,
+                )
             )
 
         cpp_dirs.append(f"/usr/include/{platform.machine()}-linux-gnu")
