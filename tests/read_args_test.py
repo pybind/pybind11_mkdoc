@@ -35,6 +35,11 @@ def darwin(monkeypatch):
     monkeypatch.setattr(mkdoc_lib.platform, "system", lambda: "Darwin")
 
 
+@pytest.fixture
+def windows(monkeypatch):
+    monkeypatch.setattr(mkdoc_lib.platform, "system", lambda: "Windows")
+
+
 def fake_walk(subdirs):
     return lambda top: iter([(top, list(subdirs), [])])
 
@@ -129,6 +134,26 @@ def test_macos_libclang_path_env(monkeypatch, config_calls, tmp_path):
 @pytest.mark.usefixtures("darwin", "clean_env", "config_calls")
 def test_macos_libclang_path_env_missing_raises(monkeypatch, tmp_path):
     monkeypatch.setenv("LIBCLANG_PATH", str(tmp_path / "does_not_exist.dylib"))
+
+    with pytest.raises(FileNotFoundError):
+        mkdoc_lib.read_args(["foo.h"])
+
+
+@pytest.mark.usefixtures("windows", "clean_env")
+def test_windows_libclang_path_env(monkeypatch, config_calls, tmp_path):
+    lib = tmp_path / "libclang.dll"
+    lib.touch()
+    monkeypatch.setenv("LIBCLANG_PATH", str(lib))
+
+    _, filenames = mkdoc_lib.read_args(["foo.h"])
+
+    assert config_calls["file"] == str(lib)
+    assert filenames == ["foo.h"]
+
+
+@pytest.mark.usefixtures("windows", "clean_env", "config_calls")
+def test_windows_libclang_path_env_missing_raises(monkeypatch, tmp_path):
+    monkeypatch.setenv("LIBCLANG_PATH", str(tmp_path / "does_not_exist.dll"))
 
     with pytest.raises(FileNotFoundError):
         mkdoc_lib.read_args(["foo.h"])

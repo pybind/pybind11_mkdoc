@@ -598,10 +598,11 @@ def read_args(args):
         if "LIBCLANG_PATH" in os.environ:
             library_file = os.environ["LIBCLANG_PATH"]
             if not os.path.isfile(library_file):
-                raise FileNotFoundError(
+                msg = (
                     f"LIBCLANG_PATH points to {library_file!r}, which is not a file. "
                     "Set it to the path of libclang.dylib."
                 )
+                raise FileNotFoundError(msg)
             if not cindex.Config.loaded:
                 cindex.Config.set_library_file(library_file)
         else:
@@ -632,10 +633,11 @@ def read_args(args):
         if "LIBCLANG_PATH" in os.environ:
             library_file = os.environ["LIBCLANG_PATH"]
             if not os.path.isfile(library_file):
-                raise FileNotFoundError(
+                msg = (
                     f"LIBCLANG_PATH points to {library_file!r}, which is not a file. "
                     "Set it to the path of libclang.dll."
                 )
+                raise FileNotFoundError(msg)
             if not cindex.Config.loaded:
                 cindex.Config.set_library_file(library_file)
         else:
@@ -664,10 +666,11 @@ def read_args(args):
         if "LIBCLANG_PATH" in os.environ:
             libclang_file = os.environ["LIBCLANG_PATH"]
             if not os.path.isfile(libclang_file):
-                raise FileNotFoundError(
+                msg = (
                     f"LIBCLANG_PATH points to {libclang_file!r}, which is not a file. "
                     "Set it to the path of libclang.so.1."
                 )
+                raise FileNotFoundError(msg)
         elif llvm_dir is not None:
             libclang_file = os.path.join(llvm_dir, "lib", "libclang.so.1")
         else:
