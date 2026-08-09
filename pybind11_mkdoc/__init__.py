@@ -34,7 +34,7 @@ def _append_include_dir(args: list, include_dir: str, *, verbose: bool = True):
     if os.path.isdir(include_dir):
         args.append(f"-I{include_dir}")
     elif verbose:
-        print(f"Include directory '{include_dir}' does not exist!", file=sys.stderr)  # noqa: T201
+        print(f"Include directory '{include_dir}' does not exist!", file=sys.stderr)
 
 
 def _append_definition(args: list, definition: str):
@@ -87,7 +87,9 @@ def main():
         allow_abbrev=False,
     )
 
-    parser.add_argument("-v", "--version", action="version", version=f"%(prog)s {__version__}")
+    parser.add_argument(
+        "-v", "--version", action="version", version=f"%(prog)s {__version__}"
+    )
 
     parser.add_argument(
         "-o",

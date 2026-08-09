@@ -9,7 +9,9 @@ NAME_RE = re.compile(r"^static const char \*(\w+) =", re.MULTILINE)
 
 
 def test_suffixed_names_do_not_collide(tmp_path):
-    comments = pybind11_mkdoc.mkdoc_lib.extract_all([str(DIR / "duplicate_name_docs" / "duplicate_name.h")])
+    comments = pybind11_mkdoc.mkdoc_lib.extract_all(
+        [str(DIR / "duplicate_name_docs" / "duplicate_name.h")]
+    )
 
     output = tmp_path / "docs.h"
     with output.open("w") as fd:

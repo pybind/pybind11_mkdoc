@@ -114,7 +114,9 @@ def sanitize_name(name):
 
 section_command_re = re.compile(r"\s*[\\@](\w+)(?:\[([^\]]+)\])?(?:\s+(.*))?$")
 code_segment_re = re.compile(r"(```)")
-prefix_re = re.compile(r"(\s*)((?:[*\-•]\s)|(?:\(?\d+[\.)]\s)|(?:[\w:]+(?:\s+\[[^\]]+\])?:(?:\s+|$)))")
+prefix_re = re.compile(
+    r"(\s*)((?:[*\-•]\s)|(?:\(?\d+[\.)]\s)|(?:[\w:]+(?:\s+\[[^\]]+\])?:(?:\s+|$)))"
+)
 named_arg_re = re.compile(r"([\w:]+)\s*(.*)")
 
 IGNORED_DOXYGEN_COMMANDS = {
@@ -182,8 +184,14 @@ INLINE_DOXYGEN_REPLACEMENTS = [
 
 # Applied before the Doxygen sections are consumed.
 BLOCK_DOXYGEN_REPLACEMENTS = [
-    (re.compile(r"[\\@]code\s?(.*?)\s?[\\@]endcode", flags=re.DOTALL), "```\n\\1\n```\n"),
-    (re.compile(r"[\\@]verbatim\s?(.*?)\s?[\\@]endverbatim", flags=re.DOTALL), "```\n\\1\n```\n"),
+    (
+        re.compile(r"[\\@]code\s?(.*?)\s?[\\@]endcode", flags=re.DOTALL),
+        "```\n\\1\n```\n",
+    ),
+    (
+        re.compile(r"[\\@]verbatim\s?(.*?)\s?[\\@]endverbatim", flags=re.DOTALL),
+        "```\n\\1\n```\n",
+    ),
 ]
 
 MARKUP_REPLACEMENTS = [
@@ -381,7 +389,9 @@ def _consume_doxygen_sections(s):
     result += _format_named_entries("Template Args", t_params)
     result += _format_list_entries("Returns", returns)
     result += _format_named_entries("Raises", raises)
-    result += _format_section_entries((heading, " ".join(text).strip()) for heading, text in sections)
+    result += _format_section_entries(
+        (heading, " ".join(text).strip()) for heading, text in sections
+    )
     return "\n".join(result)
 
 
@@ -500,7 +510,9 @@ def process_comment(comment):
                     continue
 
                 prefix, indent = get_prefix_and_indent(line)
-                if paragraph and ((indent != current_indent) or (prefix and prefix != current_prefix)):
+                if paragraph and (
+                    (indent != current_indent) or (prefix and prefix != current_prefix)
+                ):
                     # Prefix/indent changed → start new paragraph
                     flush_paragraph()
 
@@ -693,10 +705,16 @@ def read_args(args):
         cpp_dirs = []
 
         if "-stdlib=libc++" not in args:
-            cpp_dirs.append(max(glob("/usr/include/c++/*"), default=None, key=_folder_version))
+            cpp_dirs.append(
+                max(glob("/usr/include/c++/*"), default=None, key=_folder_version)
+            )
 
             cpp_dirs.append(
-                max(glob(f"/usr/include/{platform.machine()}-linux-gnu/c++/*"), default=None, key=_folder_version)
+                max(
+                    glob(f"/usr/include/{platform.machine()}-linux-gnu/c++/*"),
+                    default=None,
+                    key=_folder_version,
+                )
             )
         elif llvm_dir is not None:
             cpp_dirs.append(str(PurePosixPath(llvm_dir) / "include" / "c++" / "v1"))
@@ -706,7 +724,9 @@ def read_args(args):
         elif llvm_dir is not None:
             cpp_dirs.append(
                 max(
-                    glob(str(PurePosixPath(llvm_dir) / "lib" / "clang" / "*" / "include")),
+                    glob(
+                        str(PurePosixPath(llvm_dir) / "lib" / "clang" / "*" / "include")
+                    ),
                     default=None,
                     key=_folder_version,
                 )
@@ -717,7 +737,13 @@ def read_args(args):
 
         # Capability to specify additional include directories manually
         if "CPP_INCLUDE_DIRS" in os.environ:
-            cpp_dirs.extend([cpp_dir for cpp_dir in os.environ["CPP_INCLUDE_DIRS"].split() if os.path.exists(cpp_dir)])
+            cpp_dirs.extend(
+                [
+                    cpp_dir
+                    for cpp_dir in os.environ["CPP_INCLUDE_DIRS"].split()
+                    if os.path.exists(cpp_dir)
+                ]
+            )
 
         for cpp_dir in cpp_dirs:
             if cpp_dir is None:

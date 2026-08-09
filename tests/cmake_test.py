@@ -10,7 +10,15 @@ def test_pybind11_mkdoc_cmake(tmp_path: Path) -> None:
     # Run pybind11-mkdoc and put the output in a temp file
     build_dir = tmp_path / "build"
     subprocess.run(
-        ["cmake", "-B", build_dir, "-S", DIR / "cmake_docs", f"-DPython_EXECUTABLE={sys.executable}"], check=True
+        [
+            "cmake",
+            "-B",
+            build_dir,
+            "-S",
+            DIR / "cmake_docs",
+            f"-DPython_EXECUTABLE={sys.executable}",
+        ],
+        check=True,
     )
     subprocess.run(["cmake", "--build", build_dir], check=True)
 
@@ -31,7 +39,14 @@ def test_pybind11_mkdoc_cmake_extra_args(tmp_path: Path) -> None:
     env["PYBIND11_TEST_EXTRA_ARGS"] = "-DMY_EXTRA_DEFINE=1;-DMY_OTHER_DEFINE=1"
 
     subprocess.run(
-        ["cmake", "-B", build_dir, "-S", DIR / "cmake_docs", f"-DPython_EXECUTABLE={sys.executable}"],
+        [
+            "cmake",
+            "-B",
+            build_dir,
+            "-S",
+            DIR / "cmake_docs",
+            f"-DPython_EXECUTABLE={sys.executable}",
+        ],
         check=True,
         env=env,
     )

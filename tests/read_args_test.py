@@ -14,14 +14,23 @@ def config_calls(monkeypatch):
     """Record cindex.Config.set_library_* calls instead of configuring libclang."""
     calls = {}
     monkeypatch.setattr(cindex.Config, "loaded", False)
-    monkeypatch.setattr(cindex.Config, "set_library_file", lambda p: calls.__setitem__("file", p))
-    monkeypatch.setattr(cindex.Config, "set_library_path", lambda p: calls.__setitem__("path", p))
+    monkeypatch.setattr(
+        cindex.Config, "set_library_file", lambda p: calls.__setitem__("file", p)
+    )
+    monkeypatch.setattr(
+        cindex.Config, "set_library_path", lambda p: calls.__setitem__("path", p)
+    )
     return calls
 
 
 @pytest.fixture
 def clean_env(monkeypatch):
-    for var in ["LIBCLANG_PATH", "LLVM_DIR_PATH", "CLANG_INCLUDE_DIR", "CPP_INCLUDE_DIRS"]:
+    for var in [
+        "LIBCLANG_PATH",
+        "LLVM_DIR_PATH",
+        "CLANG_INCLUDE_DIR",
+        "CPP_INCLUDE_DIRS",
+    ]:
         monkeypatch.delenv(var, raising=False)
 
 
@@ -58,7 +67,9 @@ def test_linux_libclang_path_without_llvm_dir(monkeypatch, config_calls, tmp_pat
 
 
 @pytest.mark.usefixtures("linux", "clean_env")
-def test_linux_libclang_path_without_llvm_dir_libcpp(monkeypatch, config_calls, tmp_path):
+def test_linux_libclang_path_without_llvm_dir_libcpp(
+    monkeypatch, config_calls, tmp_path
+):
     lib = tmp_path / "libclang.so.1"
     lib.touch()
     monkeypatch.setattr(mkdoc_lib, "glob", lambda _pattern: [])
@@ -102,7 +113,10 @@ def test_macos_xcode_preferred(monkeypatch, config_calls):
 
     assert config_calls["path"] == XCODE + "Toolchains/XcodeDefault.xctoolchain/usr/lib"
     idx = parameters.index("-isysroot")
-    assert parameters[idx + 1] == XCODE + "Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk"
+    assert (
+        parameters[idx + 1]
+        == XCODE + "Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk"
+    )
 
 
 @pytest.mark.usefixtures("darwin", "clean_env")
