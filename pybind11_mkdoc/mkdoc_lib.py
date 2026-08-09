@@ -17,6 +17,7 @@ import textwrap
 from concurrent.futures import ThreadPoolExecutor
 from glob import glob
 from itertools import repeat
+from pathlib import PurePosixPath
 
 from clang import cindex
 from clang.cindex import CursorKind
@@ -577,6 +578,10 @@ def _extract_file(filename, parameters):
     return output
 
 
+def _folder_version(d):
+    return [int(ver) for ver in re.findall(r"(?<!lib)(?<!\d)\d+", d)]
+
+
 def read_args(args):
     parameters = []
     filenames = []
@@ -588,27 +593,54 @@ def read_args(args):
 
     if platform.system() == "Darwin":
         dev_path = "/Applications/Xcode.app/Contents/Developer/"
-        lib_dir = dev_path + "Toolchains/XcodeDefault.xctoolchain/usr/lib/"
-        sdk_dir = dev_path + "Platforms/MacOSX.platform/Developer/SDKs"
-        libclang = lib_dir + "libclang.dylib"
+        clt_path = "/Library/Developer/CommandLineTools/"
 
         # cindex forbids (re)configuring the library once it has been loaded
-        if os.path.exists(libclang) and not cindex.Config.loaded:
-            cindex.Config.set_library_path(os.path.dirname(libclang))
+        if "LIBCLANG_PATH" in os.environ:
+            library_file = os.environ["LIBCLANG_PATH"]
+            if not os.path.isfile(library_file):
+                msg = (
+                    f"LIBCLANG_PATH points to {library_file!r}, which is not a file. "
+                    "Set it to the path of libclang.dylib."
+                )
+                raise FileNotFoundError(msg)
+            if not cindex.Config.loaded:
+                cindex.Config.set_library_file(library_file)
+        else:
+            for libclang in (
+                dev_path + "Toolchains/XcodeDefault.xctoolchain/usr/lib/libclang.dylib",
+                clt_path + "usr/lib/libclang.dylib",
+            ):
+                if os.path.exists(libclang):
+                    if not cindex.Config.loaded:
+                        cindex.Config.set_library_path(os.path.dirname(libclang))
+                    break
 
-        if os.path.exists(sdk_dir):
-            sysroot_dir = os.path.join(sdk_dir, next(os.walk(sdk_dir))[1][0])
-            parameters.append("-isysroot")
-            parameters.append(sysroot_dir)
+        for sdk_dir in (
+            dev_path + "Platforms/MacOSX.platform/Developer/SDKs",
+            clt_path + "SDKs",
+        ):
+            if os.path.exists(sdk_dir):
+                sdks = sorted(next(os.walk(sdk_dir))[1], key=_folder_version)
+                if "MacOSX.sdk" in sdks:
+                    sdk = "MacOSX.sdk"
+                elif sdks:
+                    sdk = sdks[-1]
+                else:
+                    continue
+                parameters.extend(["-isysroot", str(PurePosixPath(sdk_dir) / sdk)])
+                break
     elif platform.system() == "Windows":
         if "LIBCLANG_PATH" in os.environ:
             library_file = os.environ["LIBCLANG_PATH"]
-            if os.path.isfile(library_file):
-                if not cindex.Config.loaded:
-                    cindex.Config.set_library_file(library_file)
-            else:
-                msg = "Failed to find libclang.dll! Set the LIBCLANG_PATH environment variable to provide a path to it."
+            if not os.path.isfile(library_file):
+                msg = (
+                    f"LIBCLANG_PATH points to {library_file!r}, which is not a file. "
+                    "Set it to the path of libclang.dll."
+                )
                 raise FileNotFoundError(msg)
+            if not cindex.Config.loaded:
+                cindex.Config.set_library_file(library_file)
         else:
             library_file = ctypes.util.find_library("libclang.dll")
             if library_file is not None and not cindex.Config.loaded:
@@ -617,24 +649,32 @@ def read_args(args):
         # LLVM switched to a monolithical setup that includes everything under
         # /usr/lib/llvm{version_number}/. We glob for the library and select
         # the highest version
-        def folder_version(d):
-            return [int(ver) for ver in re.findall(r"(?<!lib)(?<!\d)\d+", d)]
-
         llvm_dir = max(
             (
                 path
                 for libdir in ["lib64", "lib", "lib32"]
                 for path in glob(f"/usr/{libdir}/llvm-*")
-                if os.path.exists(os.path.join(path, "lib", "libclang.so.1"))
+                if os.path.exists(str(PurePosixPath(path) / "lib" / "libclang.so.1"))
             ),
             default=None,
-            key=folder_version,
+            key=_folder_version,
         )
 
         # Ability to override LLVM/libclang paths
         if "LLVM_DIR_PATH" in os.environ:
             llvm_dir = os.environ["LLVM_DIR_PATH"]
-        elif llvm_dir is None:
+
+        if "LIBCLANG_PATH" in os.environ:
+            libclang_file = os.environ["LIBCLANG_PATH"]
+            if not os.path.isfile(libclang_file):
+                msg = (
+                    f"LIBCLANG_PATH points to {libclang_file!r}, which is not a file. "
+                    "Set it to the path of libclang.so.1."
+                )
+                raise FileNotFoundError(msg)
+        elif llvm_dir is not None:
+            libclang_file = str(PurePosixPath(llvm_dir) / "lib" / "libclang.so.1")
+        else:
             msg = (
                 "Failed to find a LLVM installation providing the file "
                 "/usr/lib{32,64}/llvm-{VER}/lib/libclang.so.1. Make sure that "
@@ -648,29 +688,28 @@ def read_args(args):
             )
             raise FileNotFoundError(msg)
 
-        if "LIBCLANG_PATH" in os.environ:
-            libclang_dir = os.environ["LIBCLANG_PATH"]
-        else:
-            libclang_dir = os.path.join(llvm_dir, "lib", "libclang.so.1")
-
         if not cindex.Config.loaded:
-            cindex.Config.set_library_file(libclang_dir)
+            cindex.Config.set_library_file(libclang_file)
         cpp_dirs = []
 
         if "-stdlib=libc++" not in args:
-            cpp_dirs.append(max(glob("/usr/include/c++/*"), default=None, key=folder_version))
+            cpp_dirs.append(max(glob("/usr/include/c++/*"), default=None, key=_folder_version))
 
             cpp_dirs.append(
-                max(glob(f"/usr/include/{platform.machine()}-linux-gnu/c++/*"), default=None, key=folder_version)
+                max(glob(f"/usr/include/{platform.machine()}-linux-gnu/c++/*"), default=None, key=_folder_version)
             )
-        else:
-            cpp_dirs.append(os.path.join(llvm_dir, "include", "c++", "v1"))
+        elif llvm_dir is not None:
+            cpp_dirs.append(str(PurePosixPath(llvm_dir) / "include" / "c++" / "v1"))
 
         if "CLANG_INCLUDE_DIR" in os.environ:
             cpp_dirs.append(os.environ["CLANG_INCLUDE_DIR"])
-        else:
+        elif llvm_dir is not None:
             cpp_dirs.append(
-                max(glob(os.path.join(llvm_dir, "lib", "clang", "*", "include")), default=None, key=folder_version)
+                max(
+                    glob(str(PurePosixPath(llvm_dir) / "lib" / "clang" / "*" / "include")),
+                    default=None,
+                    key=_folder_version,
+                )
             )
 
         cpp_dirs.append(f"/usr/include/{platform.machine()}-linux-gnu")
