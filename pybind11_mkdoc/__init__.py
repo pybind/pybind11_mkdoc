@@ -14,7 +14,9 @@ from pybind11_mkdoc.mkdoc_lib import mkdoc
 __version__ = "2.6.2.dev1"
 
 
-def _append_include_dir(args: list, include_dir: str, *, verbose: bool = True):
+def _append_include_dir(
+    args: list[str], include_dir: str, *, verbose: bool = True
+) -> None:
     """
     Add an include directory to an argument list (if it exists).
 
@@ -37,7 +39,7 @@ def _append_include_dir(args: list, include_dir: str, *, verbose: bool = True):
         print(f"Include directory '{include_dir}' does not exist!", file=sys.stderr)
 
 
-def _append_definition(args: list, definition: str):
+def _append_definition(args: list[str], definition: str) -> None:
     """
     Add a compiler definition to an argument list.
 
@@ -73,7 +75,7 @@ def get_cmake_dir() -> Path:
     raise ImportError(msg)
 
 
-def main():
+def main() -> int:
     """
     Entry point for the `pybind11_mkdoc` console script.
 
@@ -133,7 +135,7 @@ def main():
 
     parsed_args, unparsed_args = parser.parse_known_args()
 
-    mkdoc_args = []
+    mkdoc_args: list[str] = []
     mkdoc_out = parsed_args.output
     docstring_width = parsed_args.width
 

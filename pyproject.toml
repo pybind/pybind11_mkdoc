@@ -43,5 +43,16 @@ pybind11-mkdoc = "pybind11_mkdoc:main"
 include = ["tests/**/*.py", "tests/**/*.h", ".gitignore"]
 
 
+[tool.mypy]
+files = ["pybind11_mkdoc"]
+strict = true
+warn_unreachable = true
+enable_error_code = ["ignore-without-code", "redundant-expr", "truthy-bool"]
+
+[[tool.mypy.overrides]]
+module = "clang.*"
+ignore_missing_imports = true
+
+
 [tool.ruff.lint]
 ignore = ["S110", "BLE", "PLW2901", "PLW0603", "INP001"]
