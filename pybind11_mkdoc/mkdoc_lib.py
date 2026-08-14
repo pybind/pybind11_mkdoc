@@ -18,9 +18,25 @@ from concurrent.futures import ThreadPoolExecutor
 from glob import glob
 from itertools import repeat
 from pathlib import PurePosixPath
+from typing import TYPE_CHECKING, Any, Literal, TextIO, Union
 
 from clang import cindex
 from clang.cindex import CursorKind
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+
+# (name, filename, comment) for one documented declaration
+_Doc = tuple[str, str, str]
+
+# The active continuation target while consuming Doxygen sections: a tag
+# plus the container (and index) that follow-up lines are appended to.
+_Target = Union[
+    tuple[Literal["body", "brief"], "list[str]"],
+    tuple[Literal["section"], "list[tuple[str, list[str]]]"],
+    tuple[Literal["list"], "list[str]", int],
+    tuple[Literal["entry"], "list[tuple[str, str]]", int],
+]
 
 RECURSE_LIST = [
     CursorKind.TRANSLATION_UNIT,
@@ -102,7 +118,7 @@ class NoFilenamesError(ValueError):
     pass
 
 
-def sanitize_name(name):
+def sanitize_name(name: str) -> str:
     name = re.sub(r"type-parameter-0-([0-9]+)", r"T\1", name)
     for k, v in CPP_OPERATORS.items():
         name = name.replace(f"operator{k}", f"operator_{v}")
@@ -206,7 +222,7 @@ MARKUP_REPLACEMENTS = [
 ]
 
 
-def _format_named_entries(heading, entries):
+def _format_named_entries(heading: str, entries: list[tuple[str, str]]) -> list[str]:
     if not entries:
         return []
     lines = [f"{heading}:"]
@@ -215,7 +231,7 @@ def _format_named_entries(heading, entries):
     return lines
 
 
-def _format_list_entries(heading, entries):
+def _format_list_entries(heading: str, entries: list[str]) -> list[str]:
     if not entries:
         return []
     lines = [f"{heading}:"]
@@ -224,7 +240,7 @@ def _format_list_entries(heading, entries):
     return lines
 
 
-def _format_section_entries(entries):
+def _format_section_entries(entries: Iterable[tuple[str, str]]) -> list[str]:
     lines = []
     for heading, text in entries:
         lines.append(f"{heading}:")
@@ -234,7 +250,7 @@ def _format_section_entries(entries):
     return lines
 
 
-def _append_continuation(target, text):
+def _append_continuation(target: _Target, text: str) -> None:
     text = text.strip()
     if not text:
         return
@@ -251,21 +267,21 @@ def _append_continuation(target, text):
         index = target[2]
         entries[index] = f"{entries[index]} {text}".strip()
     else:
-        entries = target[1]
+        named_entries = target[1]
         index = target[2]
-        name, value = entries[index]
-        entries[index] = (name, f"{value} {text}".strip())
+        name, value = named_entries[index]
+        named_entries[index] = (name, f"{value} {text}".strip())
 
 
-def _consume_doxygen_sections(s):
+def _consume_doxygen_sections(s: str) -> str:
     lines = s.splitlines()
-    body_lines = []
-    params = []
-    t_params = []
-    returns = []
-    raises = []
-    sections = []
-    active = None
+    body_lines: list[str] = []
+    params: list[tuple[str, str]] = []
+    t_params: list[tuple[str, str]] = []
+    returns: list[str] = []
+    raises: list[tuple[str, str]] = []
+    sections: list[tuple[str, list[str]]] = []
+    active: _Target | None = None
     pending_brief_separator = False
 
     for line in lines:
@@ -371,7 +387,7 @@ def _consume_doxygen_sections(s):
             if heading is None:
                 heading = rest.strip().rstrip(":") or "Note"
                 rest = ""
-            sections.append([heading, [rest] if rest else []])
+            sections.append((heading, [rest] if rest else []))
             active = ("section", sections)
             continue
 
@@ -395,7 +411,7 @@ def _consume_doxygen_sections(s):
     return "\n".join(result)
 
 
-def process_comment(comment):
+def process_comment(comment: str) -> str:
     # For declarations that have no raw comment; skip the full normalization pipeline.
     if not comment:
         return ""
@@ -403,7 +419,7 @@ def process_comment(comment):
     result_lines = []
 
     # Remove C++ comment syntax
-    leading_spaces = float("inf")
+    leading_spaces: int | None = None
     for s in comment.expandtabs(tabsize=4).splitlines():
         s = s.strip()
         if s.endswith("*/"):
@@ -415,15 +431,16 @@ def process_comment(comment):
         elif s.startswith("*"):
             s = s[1:]
         if len(s) > 0:
-            leading_spaces = min(leading_spaces, len(s) - len(s.lstrip()))
+            n_spaces = len(s) - len(s.lstrip())
+            leading_spaces = (
+                n_spaces if leading_spaces is None else min(leading_spaces, n_spaces)
+            )
         result_lines.append(s)
 
-    if leading_spaces != float("inf"):
-        result = "\n".join(s[leading_spaces:] for s in result_lines) + "\n"
+    if leading_spaces:
+        s = "\n".join(s[leading_spaces:] for s in result_lines) + "\n"
     else:
-        result = "\n".join(result_lines) + "\n"
-
-    s = result
+        s = "\n".join(result_lines) + "\n"
     for pattern, replacement in INLINE_DOXYGEN_REPLACEMENTS:
         s = pattern.sub(replacement, s)
 
@@ -447,24 +464,24 @@ def process_comment(comment):
     wrapper.width = docstring_width
     wrapper.initial_indent = wrapper.subsequent_indent = ""
 
-    result = []
+    parts: list[str] = []
     in_code_segment = False
     for x in code_segment_re.split(s):
         if x == "```":
             if not in_code_segment:
-                if result and result[-1] and not result[-1].endswith("\n\n"):
-                    result[-1] += "\n"
-                result.append("```\n")
+                if parts and parts[-1] and not parts[-1].endswith("\n\n"):
+                    parts[-1] += "\n"
+                parts.append("```\n")
             else:
-                result.append("\n```\n\n")
+                parts.append("\n```\n\n")
             in_code_segment = not in_code_segment
         elif in_code_segment:
-            result.append(x.strip())
+            parts.append(x.strip())
         else:
-            wrapped = []
-            paragraph = []
+            wrapped: list[str] = []
+            paragraph: list[str] = []
 
-            def get_prefix_and_indent(line) -> tuple[str | None, str]:
+            def get_prefix_and_indent(line: str) -> tuple[str | None, str]:
                 indent = len(line) - len(line.lstrip())
                 indent_str = " " * indent
                 m = prefix_re.match(line)
@@ -473,7 +490,9 @@ def process_comment(comment):
                     return prefix, " " * len(prefix)
                 return None, indent_str
 
-            def flush_paragraph(paragraph=paragraph, wrapped=wrapped):
+            def flush_paragraph(
+                paragraph: list[str] = paragraph, wrapped: list[str] = wrapped
+            ) -> None:
                 if not paragraph:
                     return
 
@@ -501,7 +520,7 @@ def process_comment(comment):
                 wrapped.append(wrapper.fill(content))
                 paragraph.clear()
 
-            current_prefix = None
+            current_prefix: str | None = None
             current_indent = ""
             for line in x.splitlines():
                 if not line.strip():
@@ -521,11 +540,11 @@ def process_comment(comment):
                 current_indent = indent
 
             flush_paragraph()
-            result.append("\n".join(wrapped))
-    return "".join(result).rstrip().lstrip("\n")
+            parts.append("\n".join(wrapped))
+    return "".join(parts).rstrip().lstrip("\n")
 
 
-def format_function_docstring(comment):
+def format_function_docstring(comment: str) -> str:
     if not comment:
         return ""
     comment = comment.rstrip()
@@ -534,7 +553,7 @@ def format_function_docstring(comment):
     return comment + "\n\n"
 
 
-def _is_cursor_from_file(node, filename, file_cache):
+def _is_cursor_from_file(node: Any, filename: str, file_cache: dict[str, bool]) -> bool:
     if node.location.file is None:
         return True
 
@@ -545,7 +564,13 @@ def _is_cursor_from_file(node, filename, file_cache):
     return file_cache[node_filename]
 
 
-def extract(filename, node, prefix, output, file_cache):
+def extract(
+    filename: str,
+    node: Any,
+    prefix: str,
+    output: list[_Doc],
+    file_cache: dict[str, bool],
+) -> None:
     if not _is_cursor_from_file(node, filename, file_cache):
         return
     if node.kind in RECURSE_LIST:
@@ -568,7 +593,7 @@ def extract(filename, node, prefix, output, file_cache):
             output.append((name, filename, comment))
 
 
-def _report_diagnostics(filename, tu):
+def _report_diagnostics(filename: str, tu: Any) -> None:
     """Print clang diagnostics to stderr and fail if any of them is an error."""
     errors = 0
     for diagnostic in tu.diagnostics:
@@ -580,21 +605,21 @@ def _report_diagnostics(filename, tu):
         raise RuntimeError(msg)
 
 
-def _extract_file(filename, parameters):
+def _extract_file(filename: str, parameters: list[str]) -> list[_Doc]:
     # Diagnostics are printed by _report_diagnostics, not by libclang itself.
     index = cindex.Index(cindex.conf.lib.clang_createIndex(False, False))
     tu = index.parse(filename, parameters)
     _report_diagnostics(filename, tu)
-    output = []
+    output: list[_Doc] = []
     extract(filename, tu.cursor, "", output, {})
     return output
 
 
-def _folder_version(d):
+def _folder_version(d: str) -> list[int]:
     return [int(ver) for ver in re.findall(r"(?<!lib)(?<!\d)\d+", d)]
 
 
-def read_args(args):
+def read_args(args: list[str]) -> tuple[list[str], list[str]]:
     parameters = []
     filenames = []
     if "-x" not in args:
@@ -654,9 +679,9 @@ def read_args(args):
             if not cindex.Config.loaded:
                 cindex.Config.set_library_file(library_file)
         else:
-            library_file = ctypes.util.find_library("libclang.dll")
-            if library_file is not None and not cindex.Config.loaded:
-                cindex.Config.set_library_file(library_file)
+            found_library = ctypes.util.find_library("libclang.dll")
+            if found_library is not None and not cindex.Config.loaded:
+                cindex.Config.set_library_file(found_library)
     elif platform.system() == "Linux":
         # LLVM switched to a monolithical setup that includes everything under
         # /usr/lib/llvm{version_number}/. We glob for the library and select
@@ -702,7 +727,7 @@ def read_args(args):
 
         if not cindex.Config.loaded:
             cindex.Config.set_library_file(libclang_file)
-        cpp_dirs = []
+        cpp_dirs: list[str | None] = []
 
         if "-stdlib=libc++" not in args:
             cpp_dirs.append(
@@ -763,14 +788,14 @@ def read_args(args):
     return parameters, filenames
 
 
-def extract_all(args):
+def extract_all(args: list[str]) -> list[_Doc]:
     parameters, filenames = read_args(args)
     with ThreadPoolExecutor(max_workers=os.cpu_count()) as executor:
         results = executor.map(_extract_file, filenames, repeat(parameters))
         return [comment for output in results for comment in output]
 
 
-def write_header(comments, out_file=sys.stdout):
+def write_header(comments: list[_Doc], out_file: TextIO = sys.stdout) -> None:
     print(
         """/*
   This file contains docstrings for use in the Python bindings.
@@ -802,7 +827,7 @@ def write_header(comments, out_file=sys.stdout):
     # A suffixed name must not collide with a real symbol of that name, or with an earlier suffixed name.
     taken = {name for name, _, _ in comments}
     name_ctr = 1
-    name_prev = None
+    name_prev: str | None = None
     for name, _, comment in sorted(comments, key=lambda x: (x[0], x[1])):
         if name == name_prev:
             name_ctr += 1
@@ -826,7 +851,7 @@ def write_header(comments, out_file=sys.stdout):
     )
 
 
-def mkdoc(args, width, output=None):
+def mkdoc(args: list[str], width: int | None, output: str | None = None) -> None:
     if width is not None:
         global docstring_width
         docstring_width = width

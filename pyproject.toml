@@ -24,7 +24,8 @@ classifiers = [
   "Programming Language :: Python :: 3.15",
   "Topic :: Software Development :: Documentation",
   "Operating System :: POSIX",
-  "Operating System :: MacOS"
+  "Operating System :: MacOS",
+  "Typing :: Typed"
 ]
 dynamic = ["version"]
 
@@ -41,6 +42,17 @@ pybind11-mkdoc = "pybind11_mkdoc:main"
 
 [tool.flit.sdist]
 include = ["tests/**/*.py", "tests/**/*.h", ".gitignore"]
+
+
+[tool.mypy]
+files = ["pybind11_mkdoc"]
+strict = true
+warn_unreachable = true
+enable_error_code = ["ignore-without-code", "redundant-expr", "truthy-bool"]
+
+[[tool.mypy.overrides]]
+module = "clang.*"
+ignore_missing_imports = true
 
 
 [tool.ruff.lint]
