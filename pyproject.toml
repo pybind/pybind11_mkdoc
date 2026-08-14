@@ -24,7 +24,8 @@ classifiers = [
   "Programming Language :: Python :: 3.15",
   "Topic :: Software Development :: Documentation",
   "Operating System :: POSIX",
-  "Operating System :: MacOS"
+  "Operating System :: MacOS",
+  "Typing :: Typed"
 ]
 dynamic = ["version"]
 
