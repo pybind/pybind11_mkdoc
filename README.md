@@ -76,21 +76,21 @@ py::class_<MyClass>(m, "MyClass", DOC(MyClass))
 
 ### CMake
 The `pybind11_mkdoc` CMake function is included to easily generate header for a pybind11 module when
-compiling said module in CMake. The function generates the headers based on the arguments provided. 
-In addition, it add target dependencies so the pybind11-mkdoc header file is generated before 
-the pybind11 module. Also, it will automatically add the current binary directory to the pybind11 
+compiling said module in CMake. The function generates the headers based on the arguments provided.
+In addition, it add target dependencies so the pybind11-mkdoc header file is generated before
+the pybind11 module. Also, it will automatically add the current binary directory to the pybind11
 module's includes, so it can easily be included when compiling the module.
 
 The required parameters are:
 * OUTPUT - The name of the output file.
 * PYBIND11_MODULE - The pybind11 module target that these docs will be used for.
-* HEADERS - The header files to create docs for. These can be absoulte paths or relative to the 
+* HEADERS - The header files to create docs for. These can be absolute paths or relative to the
             current source directory.
 
 The optional parameters are:
 * EXTRA_ARGS - This string argument will be added verbatim to the pybind11-mkdoc command.
 
-Below is an exmaple of how it is used:
+Below is an example of how it is used:
 ```cmake
 # Find pybind11-mkdoc
 # This assumes you have already run a find_package for Python.
@@ -104,9 +104,9 @@ find_package(pybind11_mkdoc REQUIRED CONFIG)
 # Add the pybind11 module
 pybind11_add_module(my_pybind11_module my_src_files.cc)
 pybind11_mkdoc(
-    OUTPUT my_pybind11_module_docs.h 
+    OUTPUT my_pybind11_module_docs.h
     PYBIND11_MODULE my_pybind11_module
-    HEADERS 
+    HEADERS
         header_1.h
         /absolute/path/to/header_2.h
 )

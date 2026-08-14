@@ -1,0 +1,119 @@
+# To use locally:
+#
+#     prek -a
+#
+# Or:
+#
+#     prek install  # (runs every time you commit in git)
+#
+# To update this file:
+#
+#     prek autoupdate
+#
+# See https://github.com/pre-commit/pre-commit
+
+ci:
+  autoupdate_commit_msg: "chore(deps): update pre-commit hooks"
+  autofix_commit_msg: "style: pre-commit fixes"
+  autoupdate_schedule: monthly
+
+# Test fixtures are compared byte-for-byte against generated output
+exclude: ^tests/.*_docs/
+
+repos:
+
+# Ruff, the Python auto-correcting linter/formatter written in Rust
+- repo: https://github.com/astral-sh/ruff-pre-commit
+  rev: v0.16.1
+  hooks:
+  - id: ruff-check
+    args: ["--fix", "--show-fixes"]
+  - id: ruff-format
+
+# Check static types with mypy
+- repo: https://github.com/pre-commit/mirrors-mypy
+  rev: "v2.3.0"
+  hooks:
+  - id: mypy
+    exclude: ^tests/
+    additional_dependencies:
+    - pytest
+
+# CMake formatting
+- repo: https://github.com/cheshirekow/cmake-format-precommit
+  rev: "v0.6.13"
+  hooks:
+  - id: cmake-format
+    additional_dependencies: [pyyaml]
+    types: [file]
+    files: (\.cmake|CMakeLists.txt)(.in)?$
+    # These two are written by CMake itself
+    exclude: ^pybind11_mkdoc/share/cmake/pybind11_mkdoc/pybind11_mkdocConfig(Version)?\.cmake$
+
+# Standard hooks
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: "v6.0.0"
+  hooks:
+  - id: check-added-large-files
+  - id: check-case-conflict
+  - id: check-docstring-first
+  - id: check-merge-conflict
+  - id: check-symlinks
+  - id: check-toml
+  - id: check-yaml
+  - id: debug-statements
+  - id: end-of-file-fixer
+  - id: mixed-line-ending
+  - id: trailing-whitespace
+
+# Also code format the docs
+- repo: https://github.com/adamchainz/blacken-docs
+  rev: "1.20.0"
+  hooks:
+  - id: blacken-docs
+    additional_dependencies:
+    - black==23.*
+
+# Changes tabs to spaces
+- repo: https://github.com/Lucas-C/pre-commit-hooks
+  rev: "v1.5.6"
+  hooks:
+  - id: remove-tabs
+
+# Avoid directional quotes
+- repo: https://github.com/sirosen/texthooks
+  rev: "0.7.1"
+  hooks:
+  - id: fix-ligatures
+  - id: fix-smartquotes
+
+# Check for spelling
+- repo: https://github.com/codespell-project/codespell
+  rev: "v2.4.3"
+  hooks:
+  - id: codespell
+
+# Also check spelling
+# Use mirror because pre-commit autoupdate confuses tags in the upstream repo.
+# See https://github.com/crate-ci/typos/issues/390
+- repo: https://github.com/adhtruong/mirrors-typos
+  rev: "v1.48.0"
+  hooks:
+  - id: typos
+    args: []
+
+# Disallow some common capitalization mistakes
+- repo: local
+  hooks:
+  - id: disallow-caps
+    name: Disallow improper capitalization
+    language: pygrep
+    entry: PyBind|\bNumpy\b|Cmake|CCache|PyTest
+    exclude: ^\.pre-commit-config.yaml$
+
+# Check schemas on some of our YAML files
+- repo: https://github.com/python-jsonschema/check-jsonschema
+  rev: 0.37.4
+  hooks:
+  - id: check-github-workflows
+  - id: check-dependabot

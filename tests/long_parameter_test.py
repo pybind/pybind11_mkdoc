@@ -7,7 +7,9 @@ DIR = os.path.abspath(os.path.dirname(__file__))
 
 
 def test_long_parameter(capsys):
-    comments = pybind11_mkdoc.mkdoc_lib.extract_all([os.path.join(DIR, "long_parameter_docs", "long_parameter.h")])
+    comments = pybind11_mkdoc.mkdoc_lib.extract_all(
+        [os.path.join(DIR, "long_parameter_docs", "long_parameter.h")]
+    )
     pybind11_mkdoc.mkdoc_lib.write_header(comments, sys.stdout)
 
     res = capsys.readouterr()

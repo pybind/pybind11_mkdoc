@@ -21,7 +21,9 @@ def test_simple_header_cli(tmp_path: Path, name: str) -> None:
     # Run pybind11-mkdoc and put the output in a temp file
     tf = tmp_path / "tmp.h"
     header = DIR / "sample_header_docs" / name
-    subprocess.run([sys.executable, "-m", "pybind11_mkdoc", "-o", tf, header], check=True)
+    subprocess.run(
+        [sys.executable, "-m", "pybind11_mkdoc", "-o", tf, header], check=True
+    )
 
     # Ensure the header file matches
     res = tf.read_text(encoding="utf-8")
@@ -48,7 +50,14 @@ def test_append_definition(definition: str, expected_arg: str) -> None:
 def test_parse_failure_sets_exit_code(tmp_path: Path) -> None:
     tf = tmp_path / "tmp.h"
     result = subprocess.run(
-        [sys.executable, "-m", "pybind11_mkdoc", "-o", tf, tmp_path / "does_not_exist.h"],
+        [
+            sys.executable,
+            "-m",
+            "pybind11_mkdoc",
+            "-o",
+            tf,
+            tmp_path / "does_not_exist.h",
+        ],
         check=False,
         capture_output=True,
     )

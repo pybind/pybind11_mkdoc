@@ -98,7 +98,10 @@ def test_function_docstrings_end_with_blank_line_before_closing_quotes():
      * Details begin after the summary.
      */""")
 
-    assert format_function_docstring(comment) == "Summary line.\n\nDetails begin after the summary.\n\n"
+    assert (
+        format_function_docstring(comment)
+        == "Summary line.\n\nDetails begin after the summary.\n\n"
+    )
 
 
 def test_single_line_function_docstrings_do_not_get_extra_blank_lines():
