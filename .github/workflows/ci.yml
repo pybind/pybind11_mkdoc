@@ -14,7 +14,7 @@ jobs:
     name: Lint
     steps:
     - uses: actions/checkout@v7
-    - uses: astral-sh/setup-uv@v9.0.0
+    - uses: astral-sh/setup-uv@v10.0.1
     - run: uvx prek run -a --show-diff-on-failure
 
   checks:
@@ -37,7 +37,7 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
         allow-prereleases: true
-    - uses: astral-sh/setup-uv@v9.0.0
+    - uses: astral-sh/setup-uv@v10.0.1
 
     - name: Test package
       run: uv run --with "clang<19" --group test pytest
@@ -57,7 +57,7 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
         allow-prereleases: true
-    - uses: astral-sh/setup-uv@v9.0.0
+    - uses: astral-sh/setup-uv@v10.0.1
 
     - name: Test package
       env:
